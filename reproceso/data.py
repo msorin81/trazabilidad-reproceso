@@ -498,12 +498,31 @@ def ultimo_movimiento(traz: pd.DataFrame, tiq: pd.DataFrame):
     return max(fechas) if fechas else None
 
 
-def export_snapshot(datos: dict, data_dir: str, out_dir: str) -> dict:
-    """Guarda los datos limpios en parquet + metadata.json (fecha de actualización)."""
+def _huella(*frames: pd.DataFrame) -> str:
+    """Huella (hash) del contenido de los datos, para saber si cambiaron desde la última publicación."""
+    import hashlib
+    h = hashlib.sha256()
+    for f in frames:
+        h.update(pd.util.hash_pandas_object(f.astype(str), index=False).values.tobytes())
+    return h.hexdigest()
+
+
+def export_snapshot(datos: dict, data_dir: str, out_dir: str, solo_si_cambia: bool = False) -> dict | None:
+    """Guarda los datos limpios en parquet + metadata.json (fecha de actualización).
+    Con solo_si_cambia=True devuelve None (y no escribe nada) si los datos son iguales a los publicados."""
     import json
     os.makedirs(out_dir, exist_ok=True)
     traz = datos["traz"].copy()
     traz[PERSONAL_COLS] = None
+    huella = _huella(traz, datos["tiq"])
+    meta_path = os.path.join(out_dir, SNAP_META)
+    if solo_si_cambia and os.path.exists(meta_path):
+        try:
+            with open(meta_path, encoding="utf-8") as fh:
+                if json.load(fh).get("huella") == huella:
+                    return None
+        except (OSError, ValueError):
+            pass
     traz.to_parquet(os.path.join(out_dir, SNAP_TRAZ), index=False)
     datos["tiq"].to_parquet(os.path.join(out_dir, SNAP_TIQ), index=False)
     um = ultimo_movimiento(datos["traz"], datos["tiq"])
@@ -514,8 +533,9 @@ def export_snapshot(datos: dict, data_dir: str, out_dir: str) -> dict:
         "registros_trazabilidad": int(len(datos["traz"])),
         "registros_tiquetes": int(len(datos["tiq"])),
         "avisos": datos.get("avisos", []),
+        "huella": huella,
     }
-    with open(os.path.join(out_dir, SNAP_META), "w", encoding="utf-8") as fh:
+    with open(meta_path, "w", encoding="utf-8") as fh:
         json.dump(meta, fh, ensure_ascii=False, indent=2)
     return meta
 

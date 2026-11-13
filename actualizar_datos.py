@@ -2,13 +2,16 @@
 
 1. Lee los libros «AAAA-Stock-Reproceso.xlsm» (hojas 1–12) de la carpeta de OneDrive.
 2. Guarda una instantánea limpia en app_reproceso/data/ (parquet + metadata.json con la fecha).
+   Si los datos no cambiaron desde la última publicación, no hace nada.
 3. Si la carpeta es un repositorio git, hace commit y push → Streamlit Cloud se actualiza solo.
 
 Uso:  python actualizar_datos.py            (o doble clic en actualizar_datos.bat)
       python actualizar_datos.py --sin-push  (solo genera la instantánea)
+      pythonw actualizar_datos.py --auto     (tarea programada: sin ventana, registro en logs/)
 """
 from __future__ import annotations
 
+import datetime as dt
 import os
 import shutil
 import subprocess
@@ -17,25 +20,46 @@ import sys
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 
-from reproceso import data as D  # noqa: E402
-
 DATA_DIR = os.environ.get("REPROCESO_DATA_DIR", os.path.dirname(APP_DIR))
 SNAP_DIR = os.path.join(APP_DIR, "data")
+LOG_DIR = os.path.join(APP_DIR, "logs")
+LOG_FILE = os.path.join(LOG_DIR, "actualizacion_auto.log")
+AUTO = "--auto" in sys.argv
+NO_WINDOW = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW: git sin ventanas en modo auto
+
+
+def _setup_log():
+    """En modo automático todo lo que se imprime va a logs/actualizacion_auto.log (últimas ~1000 líneas)."""
+    os.makedirs(LOG_DIR, exist_ok=True)
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, encoding="utf-8", errors="replace") as fh:
+            lines = fh.readlines()[-1000:]
+        with open(LOG_FILE, "w", encoding="utf-8") as fh:
+            fh.writelines(lines)
+    fh = open(LOG_FILE, "a", encoding="utf-8", buffering=1)
+    sys.stdout = sys.stderr = fh
+    print(f"\n===== {dt.datetime.now():%Y-%m-%d %H:%M:%S} · actualización automática =====")
 
 
 def _git() -> str | None:
     cand = [shutil.which("git"),
-            os.path.join(os.environ.get("ProgramFiles", ""), "Git", "cmd", "git.exe"),
-            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Git", "cmd", "git.exe")]
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Git", "cmd", "git.exe"),
+            os.path.join(os.environ.get("ProgramFiles", ""), "Git", "cmd", "git.exe")]
     return next((c for c in cand if c and os.path.exists(c)), None)
 
 
-def main():
+def main() -> int:
+    from reproceso import data as D
+
     print(f"Leyendo Excel en: {DATA_DIR}")
     datos = D.load_all(DATA_DIR)
     if datos["traz"].empty:
-        sys.exit("ERROR: no se leyeron registros. ¿Están los archivos .xlsm en la carpeta?")
-    meta = D.export_snapshot(datos, DATA_DIR, SNAP_DIR)
+        print("ERROR: no se leyeron registros. ¿Están los archivos .xlsm en la carpeta?")
+        return 1
+    meta = D.export_snapshot(datos, DATA_DIR, SNAP_DIR, solo_si_cambia=True)
+    if meta is None:
+        print("Sin cambios en los Excel desde la última publicación: no se publica nada.")
+        return 0
     print(f"Instantánea guardada en {SNAP_DIR}")
     print(f"  {meta['registros_trazabilidad']} registros de trazabilidad · {meta['registros_tiquetes']} tiquetes")
     print(f"  Último movimiento registrado: {meta['ultimo_movimiento']}")
@@ -43,21 +67,39 @@ def main():
         print("  AVISO:", a)
 
     if "--sin-push" in sys.argv:
-        return
+        return 0
     git = _git()
     if not git or not os.path.isdir(os.path.join(APP_DIR, ".git")):
         print("\n(git no está configurado: la instantánea quedó solo en este equipo)")
-        return
-    run = lambda *a: subprocess.run([git, *a], cwd=APP_DIR, check=False)  # noqa: E731
+        return 0
+
+    def run(*a):
+        r = subprocess.run([git, *a], cwd=APP_DIR, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", creationflags=NO_WINDOW)
+        out = (r.stdout + r.stderr).strip()
+        if out:
+            print(out)
+        return r.returncode
+
     run("add", "data")
-    r = run("commit", "-m", f"Actualización de datos {meta['publicado']}")
-    if r.returncode == 0:
-        p = run("push")
-        print("\nPublicado en GitHub ✔ (la app web se actualiza en 1–2 minutos)" if p.returncode == 0
-              else "\nERROR al hacer push. Revisa la conexión o las credenciales de GitHub.")
-    else:
-        print("\nNo hubo cambios en los datos desde la última publicación.")
+    if run("commit", "-m", f"Actualización de datos {meta['publicado']}") != 0:
+        print("\nNo hubo cambios para publicar.")
+        return 0
+    if run("push") == 0:
+        print("\nPublicado en GitHub ✔ (la app web se actualiza en 1–2 minutos)")
+        return 0
+    print("\nERROR al hacer push. Revisa la conexión o las credenciales de GitHub.")
+    return 2
 
 
 if __name__ == "__main__":
-    main()
+    if AUTO:
+        _setup_log()
+    try:
+        code = main()
+    except Exception as e:  # en modo auto el error debe quedar en el registro
+        import traceback
+        traceback.print_exc()
+        print(f"ERROR inesperado: {e}")
+        code = 3
+    sys.exit(code)

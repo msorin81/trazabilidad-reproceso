@@ -4,3 +4,4 @@ __pycache__/
 *.xlsm
 *.xlsx
 ~$*
+logs/
