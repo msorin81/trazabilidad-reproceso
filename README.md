@@ -26,6 +26,17 @@ quién autoriza); la versión local sí los muestra.
 3. Streamlit Cloud detecta el cambio y la app web se actualiza sola en 1–2 minutos.
    Los usuarios solo tienen que recargar la página.
 
+### Actualización automática diaria
+
+Una tarea programada de Windows («Reproceso - actualizar app web») ejecuta
+`actualizar_datos.py --auto` **todos los días a las 6:00 p. m.** con tu usuario (sin ventana).
+Solo publica si los Excel cambiaron; si el equipo estaba apagado, corre al encenderlo.
+El resultado de cada ejecución queda en `logs/actualizacion_auto.log`.
+
+- Cambiar la hora: `powershell -ExecutionPolicy Bypass -File programar_actualizacion.ps1 -Hora 07:30`
+- Quitar la tarea: `powershell -ExecutionPolicy Bypass -File programar_actualizacion.ps1 -Quitar`
+- Ejecutarla ya: Programador de tareas → «Reproceso - actualizar app web» → Ejecutar.
+
 Año nuevo: basta con dejar el libro `2027-Stock-Reproceso.xlsm` en la misma carpeta, con las hojas
 `1`…`12` y sus tablas `Tabla_trazabilidad_…` y `Tabla_tiquetes_…`. No hay que tocar el código.
 
