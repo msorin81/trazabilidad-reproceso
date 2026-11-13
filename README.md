@@ -19,7 +19,8 @@ quién autoriza); la versión local sí los muestra.
 ## Proceso de actualización (rutina)
 
 1. Diligenciar como siempre la hoja del mes en el libro `AAAA-Stock-Reproceso.xlsm` y **guardar**.
-2. Doble clic en **`actualizar_datos.bat`**. El script:
+2. En la app local, barra lateral → **«🌐 Actualizar la app web» → Publicar ahora**
+   (o doble clic en **`actualizar_datos.bat`**). El proceso:
    - lee los seis libros (≈ 4 s),
    - guarda la instantánea en `data/` con la fecha de actualización,
    - hace *commit* y *push* a GitHub.
