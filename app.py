@@ -29,6 +29,20 @@ def _load(data_dir: str, signature: tuple):  # signature invalida la caché si c
     return D.load_all(data_dir)
 
 
+def _publicar_web() -> tuple[bool, str]:
+    """Ejecuta actualizar_datos.py (instantánea + commit + push) y devuelve (ok, salida)."""
+    import subprocess
+    import sys
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+    try:
+        r = subprocess.run([sys.executable, os.path.join(APP_DIR, "actualizar_datos.py")], cwd=APP_DIR,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", env=env,
+                           timeout=300, creationflags=0x08000000 if os.name == "nt" else 0)
+    except subprocess.TimeoutExpired:
+        return False, "Se superó el tiempo de espera (5 min)."
+    return r.returncode == 0, (r.stdout + r.stderr).strip()
+
+
 @st.cache_data(show_spinner="Cargando datos publicados…")
 def _load_snap(snap_dir: str, signature: tuple):
     return D.load_snapshot(snap_dir)
@@ -82,6 +96,25 @@ with st.sidebar:
                      help="Vuelve a leer los archivos de Excel (úsalo después de actualizarlos)."):
             st.cache_data.clear()
             st.rerun()
+        with st.expander("🌐 Actualizar la app web", expanded=False):
+            st.caption("Lee los Excel guardados y publica los cambios en GitHub. "
+                       "La app web se actualiza 1–2 minutos después. Guarda y cierra los Excel antes.")
+            if st.button("Publicar ahora", key="btn_publicar", type="primary", **ui.WIDE):
+                with st.spinner("Leyendo Excel y publicando…"):
+                    ok, salida = _publicar_web()
+                st.session_state["_pub_res"] = (ok, salida)
+            if "_pub_res" in st.session_state:
+                ok, salida = st.session_state["_pub_res"]
+                if not ok:
+                    st.error("No se pudo publicar. Revisa el detalle.")
+                elif "Sin cambios" in salida or "No hubo cambios" in salida:
+                    st.info("No hay cambios desde la última publicación.")
+                else:
+                    st.success("Publicado ✔. La web se actualiza en 1–2 minutos.")
+                st.code(salida or "(sin salida)", language=None)
+    else:
+        st.caption("ℹ️ Esta versión se actualiza sola todos los días a las 6:00 p. m. "
+                   "y cada vez que se publica desde la app local.")
     st.caption(("Fuente: archivos Excel (OneDrive)" if modo == "excel" else "Fuente: datos publicados") +
                f"  \n{len(traz):,} registros de trazabilidad · {len(tiq):,} tiquetes".replace(",", "."))
     if datos["avisos"]:
