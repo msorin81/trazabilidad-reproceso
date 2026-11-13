@@ -2,9 +2,5 @@
 primaryColor = "#267939"
 font = "sans serif"
 
-[server]
-headless = false
-runOnSave = false
-
 [browser]
 gatherUsageStats = false
