@@ -58,7 +58,7 @@ with a:
     st.subheader("Días de mayor reproceso")
     t = d.sort_values("qq", ascending=False).head(15)[["fecha", "qq", "estibas"]]
     st.dataframe(t.rename(columns={"fecha": "Fecha", "qq": "Quintales", "estibas": "Estibas"}),
-                 hide_index=True, use_container_width=True,
+                 hide_index=True, **ui.WIDE,
                  column_config={"Fecha": st.column_config.DateColumn(format="DD/MM/YYYY"),
                                 "Quintales": st.column_config.NumberColumn(format="%.1f")})
 with b:
@@ -68,6 +68,6 @@ with b:
     r["periodo"] = r["periodo"].map(D.periodo_label)
     st.dataframe(r.rename(columns={"periodo": "Mes", "maximo": "Máx. día (qq)", "promedio": "Prom. día (qq)",
                                    "total": "Total (qq)", "dias": "Días"}),
-                 hide_index=True, use_container_width=True,
+                 hide_index=True, **ui.WIDE,
                  column_config={c_: st.column_config.NumberColumn(format="%.1f")
                                 for c_ in ["Máx. día (qq)", "Prom. día (qq)", "Total (qq)"]})

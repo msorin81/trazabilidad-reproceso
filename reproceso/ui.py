@@ -24,6 +24,17 @@ AGING_COLORS = dict(zip(AGING_ORDER, ["#86b6ef", "#3987e5", "#256abf", "#104281"
 STATUS = {"ok": ("✅", "#0ca30c"), "warn": ("⚠️", "#fab219"), "crit": ("⛔", "#d03b3b")}
 
 
+def _st_version() -> tuple:
+    try:
+        return tuple(int(x) for x in st.__version__.split(".")[:2])
+    except ValueError:
+        return (1, 0)
+
+
+# Ancho completo compatible: Streamlit ≥1.46 usa width="stretch"; versiones previas, use_container_width
+WIDE = {"width": "stretch"} if _st_version() >= (1, 46) else {"use_container_width": True}
+
+
 def cat_color(cat: str) -> str:
     return CAT_COLORS.get(cat, GRAY)
 
@@ -98,7 +109,7 @@ def headroom(fig: go.Figure, vmax: float, factor=1.15):
 
 
 def show(fig: go.Figure, key: str | None = None):
-    st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False}, key=key)
+    st.plotly_chart(fig, **WIDE, config={"displaylogo": False}, key=key)
 
 
 def month_axis(fig: go.Figure):
@@ -229,7 +240,8 @@ def show_pivot(p: pd.DataFrame, height: int | None = None):
         st.info("Sin datos para los filtros seleccionados.")
         return
     cfg = {c: st.column_config.NumberColumn(c, format="%.1f") for c in p.columns}
-    st.dataframe(p, use_container_width=True, column_config=cfg, height=height)
+    extra = {"height": height} if height else {}  # Streamlit ≥1.4x no acepta height=None
+    st.dataframe(p, **WIDE, column_config=cfg, **extra)
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +266,7 @@ def detail_table(df: pd.DataFrame, cols: list[str], key: str, filename: str, hei
             cfg[lab] = st.column_config.DateColumn(lab, format="YYYY-MM-DD" if c != "periodo" else "MMM YYYY")
         elif c in ("qq", "qq_tiquete", "qq_fisico", "qq_enteros", "diferencia"):
             cfg[lab] = st.column_config.NumberColumn(lab, format="%.1f")
-    st.dataframe(view, use_container_width=True, hide_index=True, column_config=cfg, height=height)
+    st.dataframe(view, **WIDE, hide_index=True, column_config=cfg, height=height)
     st.download_button("⬇️ Descargar Excel", to_excel_bytes({"datos": view}),
                        file_name=f"{filename}.xlsx", key=f"dl_{key}",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

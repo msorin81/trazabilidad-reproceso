@@ -84,7 +84,7 @@ t.index = [D.periodo_label(p) for p in t.index]
 t = t.T
 t.index.name = "Medida"
 cfg = {cc: st.column_config.NumberColumn(cc, format="%.1f") for cc in t.columns}
-st.dataframe(t, use_container_width=True, column_config=cfg, height=min(36 * (len(t) + 1) + 4, 820))
+st.dataframe(t, **ui.WIDE, column_config=cfg, height=min(36 * (len(t) + 1) + 4, 820))
 st.caption("Las filas de variación y porcentaje están expresadas en %.")
 st.download_button("⬇️ Descargar medidas", ui.to_excel_bytes({"medidas": t}), file_name="medidas_powerbi.xlsx",
                    key="dl_med")

@@ -92,5 +92,5 @@ st.caption("Las causas escritas con diferencias de mayúsculas, tildes o espacio
            f"bajo la escritura más frecuente. Causas distintas tras homologar: **{df['causa'].nunique()}**.")
 with st.expander("Ver frecuencia de causas de ingreso"):
     f = df.groupby("causa").agg(registros=("qq", "size"), qq=("qq", "sum")).sort_values("qq", ascending=False)
-    st.dataframe(f.rename(columns={"registros": "Registros", "qq": "Quintales"}), use_container_width=True,
+    st.dataframe(f.rename(columns={"registros": "Registros", "qq": "Quintales"}), **ui.WIDE,
                  column_config={"Quintales": st.column_config.NumberColumn(format="%.1f")})

@@ -18,7 +18,9 @@ if base["resp_laboratorio"].isna().all():  # versión web: sin nombres de person
     DIMS.pop("resp_laboratorio")
 
 f1, f2 = st.columns([2, 1])
-estados_all = sorted(base["estado"].unique())
+# Opciones estables (de toda la historia): si dependieran del filtro, al cambiar de año Streamlit
+# conservaría la selección anterior y podría excluir «Mezclado» sin avisar.
+estados_all = sorted(c["traz"]["estado"].unique())
 estados = f1.multiselect("Estados que cuentan como disolución", estados_all,
                          default=[e for e in D.ESTADOS_DISOLUCION if e in estados_all], key="dis_estados",
                          help="Por defecto «Disuelto» y «Mezclado», igual que el reporte de Power BI.")

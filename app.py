@@ -78,7 +78,7 @@ with st.sidebar:
                                  placeholder="Todos")
     st.divider()
     if modo == "excel":
-        if st.button("🔄 Recargar datos", use_container_width=True,
+        if st.button("🔄 Recargar datos", **ui.WIDE,
                      help="Vuelve a leer los archivos de Excel (úsalo después de actualizarlos)."):
             st.cache_data.clear()
             st.rerun()

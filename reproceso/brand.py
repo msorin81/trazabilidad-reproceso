@@ -14,6 +14,8 @@ import os
 import pandas as pd
 import streamlit as st
 
+from . import ui
+
 VERDE = "#267939"
 NARANJA = "#D35E13"
 GRIS = "#6D6E71"
@@ -54,10 +56,10 @@ def font_controls():
     """Botones A− / A / A+ para cambiar el tamaño de letra de toda la app."""
     st.markdown("**Tamaño de letra**")
     c1, c2, c3 = st.columns(3)
-    c1.button("A−", on_click=_set_scale, args=(-1,), use_container_width=True, help="Disminuir letra",
+    c1.button("A−", on_click=_set_scale, args=(-1,), **ui.WIDE, help="Disminuir letra",
               disabled=font_scale() <= FONT_STEPS[0])
-    c2.button("A", on_click=_set_scale, args=(None,), use_container_width=True, help="Tamaño normal")
-    c3.button("A+", on_click=_set_scale, args=(1,), use_container_width=True, help="Aumentar letra",
+    c2.button("A", on_click=_set_scale, args=(None,), **ui.WIDE, help="Tamaño normal")
+    c3.button("A+", on_click=_set_scale, args=(1,), **ui.WIDE, help="Aumentar letra",
               disabled=font_scale() >= FONT_STEPS[-1])
     st.caption(f"Tamaño actual: {round(font_scale() * 100)} %")
 

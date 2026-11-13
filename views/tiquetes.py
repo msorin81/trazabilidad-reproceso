@@ -61,7 +61,7 @@ with st.expander("Tabla mensual"):
     t["% dif"] = np.where(t["qq_tiquete"] != 0, 100 * t["diferencia"] / t["qq_tiquete"], np.nan)
     t["periodo"] = t["periodo"].map(D.periodo_label)
     st.dataframe(t.rename(columns={"periodo": "Mes", "qq_tiquete": "QQ tiquete", "qq_fisico": "QQ físico",
-                                   "diferencia": "Diferencia"}), hide_index=True, use_container_width=True,
+                                   "diferencia": "Diferencia"}), hide_index=True, **ui.WIDE,
                  column_config={x: st.column_config.NumberColumn(format="%.2f")
                                 for x in ["QQ tiquete", "QQ físico", "Diferencia", "% dif"]})
 
@@ -105,7 +105,7 @@ v = v.sort_values("fecha", ascending=False).rename(columns={
     "tiquete": "Tiquete", "fecha": "Fecha báscula", "qq_tiquete": "QQ tiquete", "qq_fisico": "QQ físico",
     "qq_traz": "QQ trazabilidad", "estibas": "Estibas", "fecha_repro": "Fecha reproceso",
     "dif_fisico_traz": "Físico − trazabilidad"})
-st.dataframe(v, hide_index=True, use_container_width=True,
+st.dataframe(v, hide_index=True, **ui.WIDE,
              column_config={"Fecha báscula": st.column_config.DateColumn(format="DD/MM/YYYY"),
                             "Fecha reproceso": st.column_config.DateColumn(format="DD/MM/YYYY"),
                             **{x: st.column_config.NumberColumn(format="%.1f") for x in

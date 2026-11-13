@@ -13,7 +13,7 @@ brand.header("Stock al final de mes", "Estibas pendientes de reproceso registrad
 if base.empty:
     ui.no_data(); st.stop()
 
-estados_all = sorted(base["estado"].unique())
+estados_all = sorted(c["traz"]["estado"].unique())  # opciones estables, no dependen del filtro
 f1, f2 = st.columns([2, 1])
 estados = f1.multiselect("Estados que cuentan como stock", estados_all,
                          default=[e for e in D.ESTADOS_STOCK if e in estados_all], key="stk_estados",
