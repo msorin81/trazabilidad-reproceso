@@ -26,8 +26,8 @@ stk_ult = stk_all[stk_all["periodo"] == ultimo]
 v_stk = stk.get(ultimo, 0.0)
 d_stk = (v_stk - stk.get(anterior, 0.0)) if anterior is not None else None
 
-st.caption(f"Periodo filtrado: **{D.periodo_label(periodos[0])} – {D.periodo_label(ultimo)}**. "
-           f"El stock corresponde a la última hoja del filtro ({D.periodo_label(ultimo)}).")
+brand.grupo(f"Periodo filtrado: {D.periodo_label(periodos[0])} – {D.periodo_label(ultimo)}",
+            f"Stock y estibas: cierre de {D.periodo_label(ultimo)} · Ingreso y disuelto: total del periodo")
 
 k = st.columns(5)
 ui.kpi(k[0], "Stock (qq)", ui.fnum(v_stk),
@@ -54,7 +54,8 @@ if rango:
     fr = flow.loc[rango[0]:rango[1]]
     n = len(fr)
     s = fr["Stock fin de mes"]
-    st.caption(f"Resumen de **{ui.etiqueta_rango(rango)}** ({n} {'mes' if n == 1 else 'meses'}):")
+    brand.grupo(f"Rango seleccionado: {ui.etiqueta_rango(rango)}",
+                f"{n} {'mes' if n == 1 else 'meses'} · se ajusta con la barra")
     k = st.columns(5)
     ui.kpi(k[0], "Stock promedio (qq)", ui.fnum(s.mean()),
            help="Promedio del stock de fin de mes («Cuantificado») de los meses del rango.")

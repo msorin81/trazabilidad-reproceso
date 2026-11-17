@@ -27,6 +27,7 @@ snap = df[df["periodo"] == sel]
 
 prev = [p for p in periodos if p < sel]
 v, v_prev = snap["qq"].sum(), (df[df["periodo"] == prev[-1]]["qq"].sum() if prev else None)
+brand.grupo(f"Cierre de {D.periodo_label(sel)}", "mes elegido en «Mes de la foto»")
 k = st.columns(4)
 ui.kpi(k[0], "Stock del mes (qq)", ui.fnum(v),
        delta=None if v_prev is None else f"{ui.fnum(v - v_prev)} qq", delta_color="inverse",
@@ -50,7 +51,8 @@ if rango:
     s = mes_qq.loc[rango[0]:rango[1]]
     e = mes_est.loc[rango[0]:rango[1]]
     n = len(s)
-    st.caption(f"Resumen de **{ui.etiqueta_rango(rango)}** ({n} {'mes' if n == 1 else 'meses'}):")
+    brand.grupo(f"Rango seleccionado: {ui.etiqueta_rango(rango)}",
+                f"{n} {'mes' if n == 1 else 'meses'} · se ajusta con la barra")
     k = st.columns(5)
     ui.kpi(k[0], "Stock promedio (qq)", ui.fnum(s.mean()),
            help="Promedio del stock de fin de mes de los meses del rango (estados elegidos arriba).")

@@ -159,6 +159,15 @@ def note(texto_md: str, risk: bool = False):
                 unsafe_allow_html=True)
 
 
+def grupo(titulo: str, detalle: str = ""):
+    """Título corto sobre un grupo de tarjetas: barra naranja + título verde + detalle gris."""
+    det = f'<span style="color:{GRIS};font-weight:400;font-size:.85rem"> · {detalle}</span>' if detalle else ""
+    st.markdown(
+        f'<div style="border-left:4px solid {NARANJA};padding:2px 0 2px 10px;margin:6px 0 4px 0;'
+        f'color:{VERDE};font-weight:700;font-size:1rem">{titulo}{det}</div>',
+        unsafe_allow_html=True)
+
+
 def footer():
     hoy = dt.date.today()
     st.markdown(f"""
