@@ -311,38 +311,79 @@ def no_data():
 
 
 # ---------------------------------------------------------------------------
-# Rango de meses «Desde–Hasta» para resumir un tramo del gráfico
+# Selección de un rango de meses DENTRO del gráfico → tarjeta flotante con las métricas
 # ---------------------------------------------------------------------------
-def rango_meses(periodos, key: str) -> tuple[pd.Timestamp, pd.Timestamp] | None:
-    """Barra deslizante con los meses del filtro. Devuelve (desde, hasta) o None si hay un solo mes."""
-    opts = [pd.Timestamp(p) for p in sorted(pd.unique(pd.Series(periodos)))]
-    if len(opts) < 2:
+AYUDA_RANGO = "Arrastra sobre el gráfico (o haz clic en una barra o punto) para resumir esos meses."
+
+
+def ayuda_rango(key: str, activo: bool):
+    """Indicación de uso y, si hay un rango elegido, botón para quitarlo."""
+    if not activo:
+        st.caption(AYUDA_RANGO)
+        return
+    a, b = st.columns([5, 1], vertical_alignment="center")
+    a.caption(AYUDA_RANGO)
+    b.button("✕ Quitar", key=f"clr_{key}", **WIDE, help="Quitar la selección de meses",
+             on_click=lambda: st.session_state.update({f"_rng_{key}": None}))
+
+
+def _mes(x) -> pd.Timestamp:
+    return pd.Timestamp(x).normalize().replace(day=1)
+
+
+def _al_seleccionar(key: str):
+    """Callback: guarda el rango elegido. Solo corre cuando el usuario selecciona/deselecciona."""
+    ev = st.session_state.get(f"chart_{key}")
+    pts = []
+    try:
+        pts = ev["selection"]["points"] or []
+    except Exception:
+        pass
+    xs = []
+    for p in pts:
+        try:
+            xs.append(_mes(p["x"]))
+        except Exception:
+            continue
+    st.session_state[f"_rng_{key}"] = (min(xs), max(xs)) if xs else None
+
+
+def rango_elegido(key: str, periodos) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    """Rango guardado, recortado a los meses del filtro actual (None si no hay selección)."""
+    r = st.session_state.get(f"_rng_{key}")
+    if not r:
         return None
-    # la clave cambia con las opciones: al cambiar los filtros la barra vuelve al rango completo
-    k = f"rng_{key}_{opts[0]:%Y%m}_{opts[-1]:%Y%m}_{len(opts)}"
-    desde, hasta = st.select_slider(
-        "Resumir los meses", options=opts, value=(opts[0], opts[-1]), format_func=D.periodo_label, key=k,
-        help="Arrastra los extremos para escoger el rango; las tarjetas de abajo se calculan "
-             "solo con esos meses y el tramo se resalta en el gráfico.")
-    return desde, hasta
+    meses = [m for m in sorted({_mes(p) for p in periodos}) if r[0] <= m <= r[1]]
+    return (meses[0], meses[-1]) if meses else None
 
 
-def marcar_rango(fig: go.Figure, rango, periodos):
-    """Sombrea en el gráfico (eje de fechas mensuales) el tramo elegido, si no es el periodo completo."""
-    if not rango:
-        return
-    ps = sorted(pd.Timestamp(p) for p in pd.unique(pd.Series(periodos)))
-    if rango[0] == ps[0] and rango[1] == ps[-1]:
-        return
-    fig.add_vrect(x0=rango[0] - pd.Timedelta(days=16), x1=rango[1] + pd.Timedelta(days=16),
-                  fillcolor="#6D6E71", opacity=0.10, line_width=0,
-                  layer="below")
+def marcar_rango(fig: go.Figure, rango):
+    """Sombrea el tramo elegido en el eje de meses."""
+    if rango:
+        fig.add_vrect(x0=rango[0] - pd.Timedelta(days=16), x1=rango[1] + pd.Timedelta(days=16),
+                      fillcolor="#6D6E71", opacity=0.10, line_width=0, layer="below")
+
+
+def tarjeta_rango(fig: go.Figure, rango, lineas: list[str]):
+    """Tarjeta dentro del gráfico (esquina superior izquierda) con las métricas del rango."""
+    n = len(pd.period_range(rango[0], rango[1], freq="M"))
+    titulo = f"<b>{etiqueta_rango(rango)}</b>  <span style='color:#6D6E71'>({n} {'mes' if n == 1 else 'meses'})</span>"
+    fig.add_annotation(xref="paper", yref="paper", x=0.005, y=0.99, xanchor="left", yanchor="top",
+                       align="left", showarrow=False, text="<br>".join([titulo, *lineas]),
+                       bgcolor="rgba(255,255,255,0.96)", bordercolor="#267939", borderwidth=1.5, borderpad=8,
+                       font=dict(size=round(13 * _scale()), color="#1A1A1A"))
+
+
+def show_seleccionable(fig: go.Figure, key: str):
+    """Gráfico en el que arrastrar (solo en horizontal) selecciona meses."""
+    fig.update_layout(dragmode="select", selectdirection="h")
+    st.plotly_chart(fig, **WIDE, config={"displaylogo": False}, key=f"chart_{key}",
+                    on_select=lambda: _al_seleccionar(key), selection_mode=("box", "points"))
 
 
 def etiqueta_rango(rango) -> str:
     a, b = rango
     return D.periodo_label(a) if a == b else f"{D.periodo_label(a)} – {D.periodo_label(b)}"
-
 
 # ---------------------------------------------------------------------------
 # Contexto (datos cargados + filtros globales)

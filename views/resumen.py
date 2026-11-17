@@ -49,27 +49,8 @@ st.subheader("Flujo mensual: ingreso, disolución y stock")
 idx = pd.DatetimeIndex(periodos)
 flow = pd.DataFrame({"Ingreso": ing, "Disolución": dis, "Stock fin de mes": stk}).reindex(idx).fillna(0)
 
-rango = ui.rango_meses(periodos, "resumen")
-if rango:
-    fr = flow.loc[rango[0]:rango[1]]
-    n = len(fr)
-    s = fr["Stock fin de mes"]
-    brand.grupo(f"Rango seleccionado: {ui.etiqueta_rango(rango)}",
-                f"{n} {'mes' if n == 1 else 'meses'} · se ajusta con la barra")
-    k = st.columns(5)
-    ui.kpi(k[0], "Stock promedio (qq)", ui.fnum(s.mean()),
-           help="Promedio del stock de fin de mes («Cuantificado») de los meses del rango.")
-    ui.kpi(k[1], "Stock máximo (qq)", ui.fnum(s.max()), nota=D.periodo_label(s.idxmax()),
-           help="Mes del rango con más stock de fin de mes.")
-    ui.kpi(k[2], "Stock mínimo (qq)", ui.fnum(s.min()), nota=D.periodo_label(s.idxmin()),
-           help="Mes del rango con menos stock de fin de mes.")
-    ui.kpi(k[3], "Ingreso del rango (qq)", ui.fnum(fr["Ingreso"].sum()),
-           nota=f"Promedio: {ui.fnum(fr['Ingreso'].mean())} qq/mes",
-           help="Suma del ingreso de los meses del rango y su promedio mensual.")
-    ui.kpi(k[4], "Disuelto del rango (qq)", ui.fnum(fr["Disolución"].sum()),
-           nota=f"Promedio: {ui.fnum(fr['Disolución'].mean())} qq/mes",
-           help="Suma de lo disuelto o mezclado en los meses del rango y su promedio mensual.")
-
+rango = ui.rango_elegido("resumen", periodos)
+ui.ayuda_rango("resumen", bool(rango))
 fig = go.Figure()
 for name in ["Ingreso", "Disolución"]:
     fig.add_bar(x=flow.index, y=flow[name], name=name, marker_color=ui.FLOW_COLORS[name],
@@ -81,13 +62,23 @@ fig.add_scatter(x=flow.index, y=flow["Stock fin de mes"], name="Stock fin de mes
                 hovertemplate="Stock fin de mes: %{y:,.1f} qq<extra></extra>")
 fig.update_layout(barmode="group", hovermode="x unified")
 ui.style(fig, height=430)
-ui.headroom(fig, flow.max().max(), 1.15)
+ui.headroom(fig, flow.max().max(), 1.6 if rango else 1.15)  # con tarjeta: espacio arriba para ella
 if len(flow) > 14:  # muchas barras: se dejan solo las etiquetas de la línea de stock
     fig.update_traces(selector=dict(type="bar"), texttemplate=None, text=None)
 fig.update_layout(hovermode="x unified")
 ui.month_axis(fig)
-ui.marcar_rango(fig, rango, periodos)
-ui.show(fig)
+if rango:
+    fr = flow.loc[rango[0]:rango[1]]
+    s = fr["Stock fin de mes"]
+    ui.marcar_rango(fig, rango)
+    ui.tarjeta_rango(fig, rango, [
+        f"Stock promedio: <b>{ui.fnum(s.mean())} qq</b>",
+        f"Máx.: {ui.fnum(s.max())} ({D.periodo_label(s.idxmax())}) · "
+        f"Mín.: {ui.fnum(s.min())} ({D.periodo_label(s.idxmin())})",
+        f"Ingreso: <b>{ui.fnum(fr['Ingreso'].sum())} qq</b> · {ui.fnum(fr['Ingreso'].mean())} qq/mes",
+        f"Disuelto: <b>{ui.fnum(fr['Disolución'].sum())} qq</b> · {ui.fnum(fr['Disolución'].mean())} qq/mes",
+    ])
+ui.show_seleccionable(fig, "resumen")
 
 with st.expander("Ver tabla"):
     t = flow.copy()

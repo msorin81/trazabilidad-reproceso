@@ -46,30 +46,24 @@ st.subheader("Evolución del stock de fin de mes por categoría")
 per_base = sorted(pd.Timestamp(p) for p in base["periodo"].unique())
 mes_qq = df.groupby("periodo")["qq"].sum().reindex(per_base).fillna(0)
 mes_est = df.groupby("periodo").size().reindex(per_base).fillna(0)
-rango = ui.rango_meses(per_base, "stock")
+rango = ui.rango_elegido("stock", per_base)
+ui.ayuda_rango("stock", bool(rango))
+fig = ui.stacked_by_category(df)
+ui.style(fig, height=380 if rango else 360)
+ui.month_axis(fig)
 if rango:
     s = mes_qq.loc[rango[0]:rango[1]]
     e = mes_est.loc[rango[0]:rango[1]]
-    n = len(s)
-    brand.grupo(f"Rango seleccionado: {ui.etiqueta_rango(rango)}",
-                f"{n} {'mes' if n == 1 else 'meses'} · se ajusta con la barra")
-    k = st.columns(5)
-    ui.kpi(k[0], "Stock promedio (qq)", ui.fnum(s.mean()),
-           help="Promedio del stock de fin de mes de los meses del rango (estados elegidos arriba).")
-    ui.kpi(k[1], "Stock máximo (qq)", ui.fnum(s.max()), nota=D.periodo_label(s.idxmax()),
-           help="Mes del rango con más stock.")
-    ui.kpi(k[2], "Stock mínimo (qq)", ui.fnum(s.min()), nota=D.periodo_label(s.idxmin()),
-           help="Mes del rango con menos stock.")
-    ui.kpi(k[3], "Estibas promedio", ui.fnum(e.mean(), 0),
-           help="Promedio de estibas en stock al cierre de cada mes del rango.")
-    ui.kpi(k[4], "Variación en el rango (qq)", ui.fnum(s.iloc[-1] - s.iloc[0]),
-           nota=f"{D.periodo_label(s.index[0])} → {D.periodo_label(s.index[-1])}",
-           help="Stock del último mes del rango menos el del primero (negativo = bajó).")
-fig = ui.stacked_by_category(df)
-ui.style(fig, height=360)
-ui.month_axis(fig)
-ui.marcar_rango(fig, rango, per_base)
-ui.show(fig)
+    ui.headroom(fig, mes_qq.max(), 1.6)  # espacio arriba para la tarjeta
+    ui.marcar_rango(fig, rango)
+    ui.tarjeta_rango(fig, rango, [
+        f"Stock promedio: <b>{ui.fnum(s.mean())} qq</b> · {ui.fnum(e.mean(), 0)} estibas",
+        f"Máx.: {ui.fnum(s.max())} ({D.periodo_label(s.idxmax())}) · "
+        f"Mín.: {ui.fnum(s.min())} ({D.periodo_label(s.idxmin())})",
+        f"Variación: <b>{ui.fnum(s.iloc[-1] - s.iloc[0])} qq</b> "
+        f"({D.periodo_label(s.index[0])} → {D.periodo_label(s.index[-1])})",
+    ])
+ui.show_seleccionable(fig, "stock")
 
 a, b = st.columns(2)
 with a:
