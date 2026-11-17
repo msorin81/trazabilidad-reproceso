@@ -283,6 +283,8 @@ KPI_ICONS = [
     ("móvil", "show_chart"), ("% stock", "pie_chart"), ("% disolución", "donut_large"),
     ("% diferencia", "percent"), ("diferencia", "difference"), ("qq tiquete", "receipt_long"),
     ("qq físico", "scale"), ("causas", "category"), ("prom. mensual", "functions"),
+    ("stock promedio", "functions"), ("stock máximo", "arrow_upward"), ("stock mínimo", "arrow_downward"),
+    ("variación", "trending_down"),
     ("estibas", "pallet"), ("stock", "inventory_2"), ("ingreso", "input"),
     ("disuelto", "water_drop"), ("disolución", "water_drop"),
 ]
@@ -294,15 +296,52 @@ def kpi_icon(label: str) -> str | None:
 
 
 def kpi(col, label: str, value: str, delta: str | None = None, help: str | None = None,
-        delta_color: str = "normal", icon: str | None = None):
+        delta_color: str = "normal", icon: str | None = None, nota: str | None = None):
+    """Tarjeta con ícono. `nota` = texto pequeño bajo el valor (sin flecha, a diferencia de delta)."""
     icon = icon or kpi_icon(label)
     shown = f":material/{icon}: {label}" if icon else label
     with col.container(border=True):
         st.metric(shown, value, delta=delta, help=help, delta_color=delta_color)
+        if nota:
+            st.caption(nota)
 
 
 def no_data():
     st.info("No hay datos para los filtros seleccionados. Ajusta los filtros en la barra lateral.")
+
+
+# ---------------------------------------------------------------------------
+# Rango de meses «Desde–Hasta» para resumir un tramo del gráfico
+# ---------------------------------------------------------------------------
+def rango_meses(periodos, key: str) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    """Barra deslizante con los meses del filtro. Devuelve (desde, hasta) o None si hay un solo mes."""
+    opts = [pd.Timestamp(p) for p in sorted(pd.unique(pd.Series(periodos)))]
+    if len(opts) < 2:
+        return None
+    # la clave cambia con las opciones: al cambiar los filtros la barra vuelve al rango completo
+    k = f"rng_{key}_{opts[0]:%Y%m}_{opts[-1]:%Y%m}_{len(opts)}"
+    desde, hasta = st.select_slider(
+        "Resumir los meses", options=opts, value=(opts[0], opts[-1]), format_func=D.periodo_label, key=k,
+        help="Arrastra los extremos para escoger el rango; las tarjetas de abajo se calculan "
+             "solo con esos meses y el tramo se resalta en el gráfico.")
+    return desde, hasta
+
+
+def marcar_rango(fig: go.Figure, rango, periodos):
+    """Sombrea en el gráfico (eje de fechas mensuales) el tramo elegido, si no es el periodo completo."""
+    if not rango:
+        return
+    ps = sorted(pd.Timestamp(p) for p in pd.unique(pd.Series(periodos)))
+    if rango[0] == ps[0] and rango[1] == ps[-1]:
+        return
+    fig.add_vrect(x0=rango[0] - pd.Timedelta(days=16), x1=rango[1] + pd.Timedelta(days=16),
+                  fillcolor="#6D6E71", opacity=0.10, line_width=0,
+                  layer="below")
+
+
+def etiqueta_rango(rango) -> str:
+    a, b = rango
+    return D.periodo_label(a) if a == b else f"{D.periodo_label(a)} – {D.periodo_label(b)}"
 
 
 # ---------------------------------------------------------------------------
