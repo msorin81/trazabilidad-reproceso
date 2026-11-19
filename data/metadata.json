@@ -1,5 +1,5 @@
 {
-  "publicado": "2026-11-18T18:08",
+  "publicado": "2026-11-19T13:12",
   "archivos": [
     {
       "archivo": "2021-Stock-Reproceso.xlsm",
@@ -23,12 +23,12 @@
     },
     {
       "archivo": "2026-Stock-Reproceso.xlsm",
-      "modificado": "2026-11-17T09:25"
+      "modificado": "2026-11-18T13:29"
     }
   ],
-  "ultimo_movimiento": "2026-11-17",
+  "ultimo_movimiento": "2026-11-18",
   "registros_trazabilidad": 10942,
-  "registros_tiquetes": 922,
+  "registros_tiquetes": 923,
   "avisos": [],
-  "huella": "c22349bd7dea6121d4b14a6122be6f4e31f63aba469d19db22aa3b955161c235"
+  "huella": "b5babb4897b5ff5083922225d36e0e7dc107be04be8974343eb5ab2b451adab8"
 }
