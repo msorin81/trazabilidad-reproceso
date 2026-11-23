@@ -314,6 +314,8 @@ def no_data():
 # Selección de un rango de meses DENTRO del gráfico → tarjeta flotante con las métricas
 # ---------------------------------------------------------------------------
 AYUDA_RANGO = "Arrastra sobre el gráfico (o haz clic en una barra o punto) para resumir esos meses."
+import time as _time
+_CARGADO = _time.time()  # ver app.py: recarga del módulo si el archivo cambia (Streamlit Cloud)
 
 
 def ayuda_rango(key: str, activo: bool):

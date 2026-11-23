@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pandas as pd
 import plotly.graph_objects as go
+import time as _time
+_CARGADO = _time.time()  # ver app.py: recarga del módulo si el archivo cambia (Streamlit Cloud)
 
 from . import ui
 from .inventario import nombre_color_texto

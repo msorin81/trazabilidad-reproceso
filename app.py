@@ -11,7 +11,29 @@ import os
 import pandas as pd
 import streamlit as st
 
-from reproceso import brand
+
+def _recargar_modulos_cambiados():
+    """Streamlit Cloud actualiza el código con cada push sin reiniciar el proceso: las páginas usan el código
+    nuevo, pero los módulos de reproceso/ ya importados se quedaban en la versión vieja. Se recargan los que
+    cambiaron (o los que vienen de una versión sin marca de carga), en orden de dependencias."""
+    import importlib
+    import sys
+    for nombre in ("reproceso.data", "reproceso.inventario", "reproceso.vinculos", "reproceso.ui",
+                   "reproceso.brand", "reproceso.plano"):
+        m = sys.modules.get(nombre)
+        if m is None or not getattr(m, "__file__", None):
+            continue
+        try:
+            viejo = os.path.getmtime(m.__file__) > getattr(m, "_CARGADO", 0)
+        except OSError:
+            continue
+        if viejo:
+            importlib.reload(m)
+
+
+_recargar_modulos_cambiados()
+
+from reproceso import brand  # noqa: E402
 from reproceso import data as D
 from reproceso import ui
 

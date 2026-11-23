@@ -18,6 +18,8 @@ import re
 import shutil
 import tempfile
 import zipfile
+import time as _time
+_CARGADO = _time.time()  # ver app.py: recarga del módulo si el archivo cambia (Streamlit Cloud)
 
 import pandas as pd
 

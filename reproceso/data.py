@@ -18,6 +18,8 @@ import os
 import re
 import unicodedata
 import warnings
+import time as _time
+_CARGADO = _time.time()  # ver app.py: recarga del módulo si el archivo cambia (Streamlit Cloud)
 
 import numpy as np
 import pandas as pd
