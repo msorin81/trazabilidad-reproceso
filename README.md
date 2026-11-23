@@ -67,6 +67,19 @@ views/                 una página por archivo
 data/                  instantánea publicada (la genera actualizar_datos.bat)
 ```
 
+## Módulos de bodega y soporte (PPR · ISO 22002-1)
+
+- **Inventario físico** (menú *Bodega*): lee `AAAA-Inventario_Fisico_Reproceso.xlsx` (formato F-RPR-266) de
+  la misma carpeta que los libros de stock. Cada pestaña con nombre de fecha `AAAA-MM-DD` es un conteo; la
+  app toma por defecto la más reciente. Cada celda `qq-estiba` (p. ej. `40-320`) es una estiba; el color de
+  relleno es el tipo de producto según la leyenda de la hoja. El lector detecta solo las zonas (números de
+  bloque 1, 2, 3… en una columna), por eso sirve para todas las fechas y para el libro de cada año nuevo.
+  Incluye plano interactivo, evolución diaria y conciliación con el stock «Cuantificado» de la trazabilidad.
+- **Trazabilidad por tiquete** (menú *Control*): lee la pestaña «Trazabilidad tiquetes» de cada libro de
+  stock (2022 en adelante) y cruza cada tiquete con la báscula y las estibas disueltas. Los vínculos web
+  (SharePoint) se abren desde la app; los que apuntan a una ruta local (`file:///C:\…`) solo muestran el
+  nombre del PDF (no se publica la ruta).
+
 ## Reglas de negocio (iguales al reporte Power BI)
 
 - **Stock de fin de mes** = registros con Estado «Cuantificado» en la hoja del mes.

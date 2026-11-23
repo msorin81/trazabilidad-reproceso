@@ -56,6 +56,10 @@ def main() -> int:
     if datos["traz"].empty:
         print("ERROR: no se leyeron registros. ¿Están los archivos .xlsm en la carpeta?")
         return 1
+    datos.update(D.load_extras(DATA_DIR))  # vínculos PDF por tiquete + inventario físico
+    if not datos["inv"].empty:
+        print(f"Inventario físico: {datos['inv']['fecha'].nunique()} pestañas, "
+              f"última {datos['inv']['fecha'].max():%Y-%m-%d}")
     meta = D.export_snapshot(datos, DATA_DIR, SNAP_DIR, solo_si_cambia=True)
     if meta is None:
         print("Sin cambios en los Excel desde la última publicación: no se publica nada.")

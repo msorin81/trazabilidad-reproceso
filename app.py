@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 
+import pandas as pd
 import streamlit as st
 
 from reproceso import brand
@@ -43,6 +44,11 @@ def _publicar_web() -> tuple[bool, str]:
     return r.returncode == 0, (r.stdout + r.stderr).strip()
 
 
+@st.cache_data(show_spinner="Leyendo vínculos de tiquetes e inventario físico…")
+def _load_extras(data_dir: str, signature: tuple):
+    return D.load_extras(data_dir)
+
+
 @st.cache_data(show_spinner="Cargando datos publicados…")
 def _load_snap(snap_dir: str, signature: tuple):
     return D.load_snapshot(snap_dir)
@@ -54,7 +60,7 @@ def _load_snap(snap_dir: str, signature: tuple):
 sig = D.files_signature(DATA_DIR)
 modo = os.environ.get("REPROCESO_MODO", "excel" if sig else "snapshot")
 if modo == "excel" and sig:
-    datos = _load(DATA_DIR, sig)
+    datos = {**_load(DATA_DIR, sig), **_load_extras(DATA_DIR, D.extras_signature(DATA_DIR))}
     info_upd = D.info_actualizacion(datos, DATA_DIR)
 elif D.snapshot_exists(SNAP_DIR):
     datos = _load_snap(SNAP_DIR, D.snapshot_signature(SNAP_DIR))
@@ -117,9 +123,10 @@ with st.sidebar:
                    "y cada vez que se publica desde la app local.")
     st.caption(("Fuente: archivos Excel (OneDrive)" if modo == "excel" else "Fuente: datos publicados") +
                f"  \n{len(traz):,} registros de trazabilidad · {len(tiq):,} tiquetes".replace(",", "."))
-    if datos["avisos"]:
-        with st.expander(f"⚠️ {len(datos['avisos'])} avisos de lectura"):
-            for a in datos["avisos"]:
+    todos_avisos = datos["avisos"] + datos.get("extra_avisos", [])
+    if todos_avisos:
+        with st.expander(f"⚠️ {len(todos_avisos)} avisos de lectura"):
+            for a in todos_avisos:
                 st.caption(a)
 
 
@@ -142,13 +149,18 @@ st.session_state["_ctx"] = {
     "actualizacion": info_upd, "modo": modo,
     "filtros_traz_extra": bool(sel_cats or sel_tipo or sel_pres or sel_cod),
     "anios": sel_anios, "meses": sel_meses,
+    **{k: datos.get(k, pd.DataFrame()) for k in ("vinculos", "inv", "inv_leyenda", "inv_zonas")},
 }
 
 # ---------------------------------------------------------------------------
 # Navegación
 # ---------------------------------------------------------------------------
 V = os.path.join(APP_DIR, "views")
-pg = st.navigation({
+import inspect  # noqa: E402
+
+# Menú completo (sin «View more») en las versiones de Streamlit que lo permiten
+NAV_EXTRA = {"expanded": True} if "expanded" in inspect.signature(st.navigation).parameters else {}
+pg = st.navigation(**NAV_EXTRA, pages={
     "Seguimiento": [
         st.Page(os.path.join(V, "resumen.py"), title="Resumen", icon="🏠", default=True),
         st.Page(os.path.join(V, "ingreso.py"), title="Ingreso por mes", icon="📥", url_path="ingreso"),
@@ -159,8 +171,13 @@ pg = st.navigation({
         st.Page(os.path.join(V, "indicadores.py"), title="Indicadores (Power BI)", icon="📊",
                 url_path="indicadores"),
     ],
+    "Bodega": [
+        st.Page(os.path.join(V, "inventario.py"), title="Inventario físico", icon="🏭", url_path="inventario"),
+    ],
     "Control": [
         st.Page(os.path.join(V, "tiquetes.py"), title="Físico vs tiquete", icon="⚖️", url_path="tiquetes"),
+        st.Page(os.path.join(V, "traz_tiquete.py"), title="Trazabilidad por tiquete", icon="🔗",
+                url_path="trazabilidad_tiquete"),
         st.Page(os.path.join(V, "buscar.py"), title="Buscar estiba / tiquete", icon="🔎", url_path="buscar"),
         st.Page(os.path.join(V, "calidad.py"), title="Calidad de datos", icon="🩺", url_path="calidad"),
     ],

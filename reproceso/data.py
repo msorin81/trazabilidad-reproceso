@@ -171,7 +171,10 @@ def _to_date(v):
             return pd.Timestamp("1899-12-30") + pd.Timedelta(days=int(v))
         return pd.NaT
     if isinstance(v, str):
-        return pd.to_datetime(v.strip(), dayfirst=True, errors="coerce")
+        ts = pd.to_datetime(v.strip(), dayfirst=True, errors="coerce")
+        # textos con hora y zona horaria («2020-12-22 20:21-06»): solo interesa la fecha; una sola fecha con
+        # zona horaria hacía que pandas descartara toda la columna al mezclarla con las demás
+        return pd.Timestamp(ts.date()) if isinstance(ts, pd.Timestamp) and not pd.isna(ts) else pd.NaT
     return pd.NaT
 
 
@@ -481,14 +484,34 @@ def load_all(data_dir: str, cache_dir: str | None = None) -> dict:
 # Instantánea (snapshot) para publicar la app en la nube sin los .xlsm
 # ---------------------------------------------------------------------------
 SNAP_TRAZ, SNAP_TIQ, SNAP_META = "trazabilidad.parquet", "tiquetes.parquet", "metadata.json"
+# Módulos adicionales: vínculos a PDF por tiquete e inventario físico (opcionales en la instantánea)
+SNAP_EXTRA = {"vinculos": "vinculos_tiquetes.parquet", "inv": "inventario_fisico.parquet",
+              "inv_leyenda": "inventario_leyenda.parquet", "inv_zonas": "inventario_zonas.parquet"}
+
+
+def load_extras(data_dir: str) -> dict:
+    """Vínculos «Trazabilidad tiquetes» (libros Stock) + inventario físico (libros Inventario_Fisico)."""
+    from . import inventario as I
+    from . import vinculos as V
+    vinc, av = V.load(data_dir)
+    out = I.load(data_dir)
+    out["vinculos"] = vinc
+    out["extra_avisos"] = av + out.pop("inv_avisos", [])
+    return out
+
+
+def extras_signature(data_dir: str) -> tuple:
+    from . import inventario as I
+    return files_signature(data_dir) + I.files_signature(data_dir)
 # Nombres de personas: no se publican en la versión web (repositorio público)
 PERSONAL_COLS = ["resp_laboratorio", "resp_elaboracion", "autoriza"]
 
 
 def files_info(data_dir: str) -> list[dict]:
+    from . import inventario as I
     return [{"archivo": os.path.basename(f),
              "modificado": dt.datetime.fromtimestamp(os.path.getmtime(f)).isoformat(timespec="minutes")}
-            for f in list_files(data_dir)]
+            for f in list_files(data_dir) + I.list_files(data_dir)]
 
 
 def ultimo_movimiento(traz: pd.DataFrame, tiq: pd.DataFrame):
@@ -514,7 +537,8 @@ def export_snapshot(datos: dict, data_dir: str, out_dir: str, solo_si_cambia: bo
     os.makedirs(out_dir, exist_ok=True)
     traz = datos["traz"].copy()
     traz[PERSONAL_COLS] = None
-    huella = _huella(traz, datos["tiq"])
+    extras = {k: datos[k] for k in SNAP_EXTRA if isinstance(datos.get(k), pd.DataFrame)}
+    huella = _huella(traz, datos["tiq"], *extras.values())
     meta_path = os.path.join(out_dir, SNAP_META)
     if solo_si_cambia and os.path.exists(meta_path):
         try:
@@ -525,6 +549,8 @@ def export_snapshot(datos: dict, data_dir: str, out_dir: str, solo_si_cambia: bo
             pass
     traz.to_parquet(os.path.join(out_dir, SNAP_TRAZ), index=False)
     datos["tiq"].to_parquet(os.path.join(out_dir, SNAP_TIQ), index=False)
+    for k, df in extras.items():
+        df.to_parquet(os.path.join(out_dir, SNAP_EXTRA[k]), index=False)
     um = ultimo_movimiento(datos["traz"], datos["tiq"])
     meta = {
         "publicado": dt.datetime.now().isoformat(timespec="minutes"),
@@ -532,7 +558,9 @@ def export_snapshot(datos: dict, data_dir: str, out_dir: str, solo_si_cambia: bo
         "ultimo_movimiento": um.strftime("%Y-%m-%d") if um is not None else None,
         "registros_trazabilidad": int(len(datos["traz"])),
         "registros_tiquetes": int(len(datos["tiq"])),
-        "avisos": datos.get("avisos", []),
+        "avisos": datos.get("avisos", []) + datos.get("extra_avisos", []),
+        "inventario_ultima_fecha": (datos["inv"]["fecha"].max().strftime("%Y-%m-%d")
+                                    if isinstance(datos.get("inv"), pd.DataFrame) and not datos["inv"].empty else None),
         "huella": huella,
     }
     with open(meta_path, "w", encoding="utf-8") as fh:
@@ -546,20 +574,25 @@ def snapshot_exists(snap_dir: str) -> bool:
 
 def snapshot_signature(snap_dir: str) -> tuple:
     return tuple((f, int(os.path.getmtime(os.path.join(snap_dir, f))))
-                 for f in (SNAP_TRAZ, SNAP_TIQ, SNAP_META))
+                 for f in (SNAP_TRAZ, SNAP_TIQ, SNAP_META, *SNAP_EXTRA.values())
+                 if os.path.exists(os.path.join(snap_dir, f)))
 
 
 def load_snapshot(snap_dir: str) -> dict:
     import json
     with open(os.path.join(snap_dir, SNAP_META), encoding="utf-8") as fh:
         meta = json.load(fh)
-    return {
+    out = {
         "traz": pd.read_parquet(os.path.join(snap_dir, SNAP_TRAZ)),
         "tiq": pd.read_parquet(os.path.join(snap_dir, SNAP_TIQ)),
         "avisos": meta.get("avisos", []),
         "cargado": dt.datetime.now(),
         "meta": meta,
     }
+    for k, fname in SNAP_EXTRA.items():
+        p = os.path.join(snap_dir, fname)
+        out[k] = pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return out
 
 
 def info_actualizacion(datos: dict, data_dir: str | None) -> dict:
