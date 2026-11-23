@@ -11,8 +11,7 @@ c = ui.ctx()
 inv, zonas = c["inv"], c["inv_zonas"]
 
 brand.header("Inventario físico de la bodega de reproceso",
-             "Plano de ubicación de estibas (formato F-RPR-266) y conciliación con la trazabilidad",
-             badge="PPR · ISO 22002-1")
+             "Plano de ubicación de estibas (formato F-RPR-266) y conciliación con la trazabilidad")
 if inv.empty:
     st.info("No se encontró el libro «AAAA-Inventario_Fisico_Reproceso.xlsx» (pestañas con nombre de fecha "
             "AAAA-MM-DD) en la carpeta de los Excel.")

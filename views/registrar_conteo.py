@@ -13,8 +13,7 @@ from reproceso import plano
 from reproceso import ui
 
 c = ui.ctx()
-brand.header("Registrar conteo físico", "Opcional: crea o actualiza la pestaña del día en el libro oficial F-RPR-266",
-             badge="Solo app local")
+brand.header("Registrar conteo físico", "Opcional: crea o actualiza la pestaña del día en el libro oficial F-RPR-266")
 if c["modo"] != "excel" or not E.disponible():
     st.info("Esta opción solo está disponible en la app local (equipo con Excel y los archivos de OneDrive).")
     st.stop()

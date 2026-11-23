@@ -10,8 +10,7 @@ c = ui.ctx()
 vin, tiq, traz = c["vinculos"], c["tiq"], c["traz"]
 
 brand.header("Trazabilidad por tiquete",
-             "Soporte PDF de cada tiquete de báscula y eventos de las estibas reprocesadas",
-             badge="PPR · ISO 22002-1")
+             "Soporte PDF de cada tiquete de báscula y eventos de las estibas reprocesadas")
 if vin.empty and tiq.empty:
     ui.no_data(); st.stop()
 
@@ -38,8 +37,10 @@ m = bas.join(vv, how="outer").join(est, how="left")
 m["fecha_ref"] = m["fecha_bascula"].fillna(m["fecha"]).fillna(m["fecha_reproceso"])
 m["anio_ref"] = m["fecha_ref"].dt.year.fillna(m["anio"]).fillna(m["periodo_b"].dt.year)
 m["mes_ref"] = m["fecha_ref"].dt.month.fillna(m["periodo_b"].dt.month)
+m["en_pestana"] = m.index.isin(vv.index)
 m["soporte"] = m.apply(lambda r: "PDF en línea" if isinstance(r["pdf_url"], str) else
-                       ("Archivo local" if isinstance(r["pdf_nombre"], str) else "Sin soporte"), axis=1)
+                       ("Archivo local" if isinstance(r["pdf_nombre"], str) else
+                        ("Sin vínculo en la pestaña" if r["en_pestana"] else "No registrado en la pestaña")), axis=1)
 m = m.reset_index().rename(columns={"index": "tiquete"})
 
 # filtros globales de año / mes
@@ -53,24 +54,27 @@ if m.empty:
 n = len(m)
 n_pdf = int((m["soporte"] == "PDF en línea").sum())
 n_loc = int((m["soporte"] == "Archivo local").sum())
-n_sin = int((m["soporte"] == "Sin soporte").sum())
+n_sinv = int((m["soporte"] == "Sin vínculo en la pestaña").sum())
+n_noreg = int((m["soporte"] == "No registrado en la pestaña").sum())
 brand.grupo("Tiquetes del periodo filtrado", "báscula + pestaña «Trazabilidad tiquetes» de los libros de stock")
 k = st.columns(5)
 ui.kpi(k[0], "Tiquetes", ui.fnum(n, 0), icon="receipt_long")
-ui.kpi(k[1], "Con soporte PDF", ui.fnum(n_pdf, 0), icon="picture_as_pdf", nota=f"{ui.fpct(n_pdf / n)} del total")
-ui.kpi(k[2], "Soporte en ruta local", ui.fnum(n_loc, 0), icon="folder_off",
-       help="El vínculo apunta a un archivo en el computador de quien lo registró (file:///C:\\…); no se puede "
-            "abrir desde la app. Se muestra el nombre del PDF para buscarlo.")
-ui.kpi(k[3], "Sin soporte", ui.fnum(n_sin, 0), icon="link_off",
-       help="Tiquetes de báscula sin vínculo en la pestaña «Trazabilidad tiquetes».")
+ui.kpi(k[1], "Con soporte PDF", ui.fnum(n_pdf + n_loc, 0), icon="picture_as_pdf",
+       nota=f"{ui.fpct((n_pdf + n_loc) / n)} del total" + (f" · {n_loc} en ruta local" if n_loc else ""),
+       help="Tiquetes con vínculo al PDF de trazabilidad. «Ruta local»: el vínculo apunta a un archivo en el "
+            "computador de quien lo registró (file:///C:\\…); no se abre desde la app, se muestra el nombre del PDF.")
+ui.kpi(k[2], "Sin vínculo en la pestaña", ui.fnum(n_sinv, 0), icon="link_off",
+       help="Están en la pestaña «Trazabilidad tiquetes» pero la celda «Trazabilidad» no tiene vínculo al PDF.")
+ui.kpi(k[3], "No registrados en la pestaña", ui.fnum(n_noreg, 0), icon="playlist_remove",
+       help="Tiquetes de la tabla de báscula del mes que aún no se han anotado en la pestaña «Trazabilidad tiquetes».")
 ui.kpi(k[4], "QQ tiquete", ui.fnum(m["qq_tiquete"].sum()), icon="scale")
 
 # ---------------------------------------------------------------------------
 st.subheader("Tiquetes y soporte de trazabilidad")
 f1, f2 = st.columns([1, 2])
 q = f1.text_input("Buscar tiquete o estiba", key="tt_buscar", placeholder="p. ej. 46994").strip()
-filtro_sop = f2.multiselect("Soporte", ["PDF en línea", "Archivo local", "Sin soporte"], key="tt_sop",
-                            placeholder="Todos")
+filtro_sop = f2.multiselect("Soporte", ["PDF en línea", "Archivo local", "Sin vínculo en la pestaña",
+                                        "No registrado en la pestaña"], key="tt_sop", placeholder="Todos")
 vista = m.copy()
 if q:
     est_q = set(dis.loc[dis["estiba"].astype(str).str.strip() == q.lstrip("0"), "tiquete"])
@@ -82,6 +86,7 @@ st.caption("Haz clic en una fila para ver la trazabilidad completa del tiquete. 
            "«Abrir» lleva al PDF en SharePoint (requiere permiso de la cuenta del Ingenio).")
 tabla = pd.DataFrame({
     "Tiquete": vista["tiquete"], "Fecha": vista["fecha_ref"], "Soporte PDF": vista["pdf_url"],
+    "Estado del soporte": vista["soporte"],
     "Archivo (ruta local)": vista["pdf_nombre"], "QQ tiquete": vista["qq_tiquete"], "QQ físico": vista["qq_fisico"],
     "Diferencia": vista["diferencia"], "Estibas": vista["estibas"], "Causas": vista["causas"],
     "Observación": vista["observacion"],

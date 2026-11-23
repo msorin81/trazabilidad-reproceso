@@ -35,13 +35,21 @@ def _hyperlinks(z, sheet_path: str) -> dict:
             if el.tag == D._M + "row":
                 el.clear()
             elif el.tag == D._M + "hyperlink":
-                ref = el.get("ref", "").split(":")[0]
-                m = re.match(r"([A-Z]+)(\d+)", ref)
-                if not m:
-                    continue
+                ref = el.get("ref", "")
                 tgt = rels.get(el.get("{%s}id" % D._NS["r"])) or (("#" + el.get("location")) if el.get("location") else None)
-                if tgt:
-                    out[(int(m.group(2)), D._col_idx(m.group(1)))] = tgt
+                if not tgt:
+                    continue
+                # un mismo vínculo puede aplicarse a un rango (p. ej. C131:C132): vale para todas sus celdas
+                if ":" in ref:
+                    r1, c1, r2, c2 = D._parse_ref(ref)
+                else:
+                    m = re.match(r"([A-Z]+)(\d+)", ref)
+                    if not m:
+                        continue
+                    r1 = r2 = int(m.group(2)); c1 = c2 = D._col_idx(m.group(1))
+                for r in range(r1, r2 + 1):
+                    for c in range(c1, c2 + 1):
+                        out.setdefault((r, c), tgt)
     return out
 
 
