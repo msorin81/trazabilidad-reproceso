@@ -75,6 +75,11 @@ data/                  instantánea publicada (la genera actualizar_datos.bat)
   relleno es el tipo de producto según la leyenda de la hoja. El lector detecta solo las zonas (números de
   bloque 1, 2, 3… en una columna), por eso sirve para todas las fechas y para el libro de cada año nuevo.
   Incluye plano interactivo, evolución diaria y conciliación con el stock «Cuantificado» de la trazabilidad.
+- **Registrar conteo** (solo app local, opcional): el Excel sigue siendo el registro principal. Esta página
+  parte del último conteo, permite retirar / agregar / trasladar estibas (con sugerencias de las que la
+  trazabilidad ya reporta como disueltas o mezcladas) y escribe la pestaña del día **en el mismo libro**
+  usando Excel (conserva formato, leyenda y fórmulas). Antes de guardar deja una copia en `respaldos/`.
+  Si el libro está abierto en tu Excel, escribe en esa ventana.
 - **Trazabilidad por tiquete** (menú *Control*): lee la pestaña «Trazabilidad tiquetes» de cada libro de
   stock (2022 en adelante) y cruza cada tiquete con la báscula y las estibas disueltas. Los vínculos web
   (SharePoint) se abren desde la app; los que apuntan a una ruta local (`file:///C:\…`) solo muestran el

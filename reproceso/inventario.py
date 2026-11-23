@@ -309,7 +309,9 @@ def leer_hoja(cells: dict, estilos: list[dict], fecha: pd.Timestamp) -> tuple[pd
                     break
     resumen = {"fecha": fecha, "total_hoja": total_hoja, "celdas_no_reconocidas": raros,
                "zonas": [{"zona": z["zona"], "orden": z["orden"], "bloques": len(z["filas"]), "niveles": z["paso"],
-                          "columnas": [z["etiquetas"][c] for c in z["cols"]]} for z in zonas]}
+                          "columnas": [z["etiquetas"][c] for c in z["cols"]],
+                          # direcciones en Excel (para escribir un conteo desde la app)
+                          "filas_excel": z["filas"], "cols_excel": z["cols"]} for z in zonas]}
     return df, leyenda, resumen
 
 
@@ -366,8 +368,9 @@ def read_workbook(path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, 
             for l in ley:
                 leyendas.append({"fecha": fecha, "condicion": l["condicion"], "color": l["color"], "orden": l["orden"]})
             for zz in res["zonas"]:
-                zonas.append({"fecha": fecha, **{k: v for k, v in zz.items() if k != "columnas"},
-                              "columnas": ",".join(str(x) for x in zz["columnas"])})
+                zonas.append({"fecha": fecha, "archivo": archivo, "hoja": nombre,
+                              **{k: (",".join(str(x) for x in v) if isinstance(v, list) else v)
+                                 for k, v in zz.items()}})
             if res["celdas_no_reconocidas"]:
                 avisos.append(f"{archivo} · {nombre}: celdas que no tienen la forma «qq-estiba»: "
                               + "; ".join(res["celdas_no_reconocidas"][:8]))

@@ -19,7 +19,7 @@ def _recargar_modulos_cambiados():
     import importlib
     import sys
     for nombre in ("reproceso.data", "reproceso.inventario", "reproceso.vinculos", "reproceso.ui",
-                   "reproceso.brand", "reproceso.plano"):
+                   "reproceso.brand", "reproceso.plano", "reproceso.escritura"):
         m = sys.modules.get(nombre)
         if m is None or not getattr(m, "__file__", None):
             continue
@@ -34,6 +34,7 @@ def _recargar_modulos_cambiados():
 _recargar_modulos_cambiados()
 
 from reproceso import brand  # noqa: E402
+from reproceso import escritura as E  # noqa: E402
 from reproceso import data as D
 from reproceso import ui
 
@@ -172,6 +173,7 @@ st.session_state["_ctx"] = {
     "filtros_traz_extra": bool(sel_cats or sel_tipo or sel_pres or sel_cod),
     "anios": sel_anios, "meses": sel_meses,
     **{k: datos.get(k, pd.DataFrame()) for k in ("vinculos", "inv", "inv_leyenda", "inv_zonas")},
+    "data_dir": DATA_DIR, "app_dir": APP_DIR,
 }
 
 # ---------------------------------------------------------------------------
@@ -195,6 +197,8 @@ pg = st.navigation(**NAV_EXTRA, pages={
     ],
     "Bodega": [
         st.Page(os.path.join(V, "inventario.py"), title="Inventario físico", icon="🏭", url_path="inventario"),
+        *([st.Page(os.path.join(V, "registrar_conteo.py"), title="Registrar conteo", icon="✏️",
+                   url_path="registrar_conteo")] if modo == "excel" and E.disponible() else []),
     ],
     "Control": [
         st.Page(os.path.join(V, "tiquetes.py"), title="Físico vs tiquete", icon="⚖️", url_path="tiquetes"),
