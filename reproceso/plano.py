@@ -93,7 +93,7 @@ def figura(est: pd.DataFrame, zona_meta: dict, compacto: bool, resaltar: set[str
     fig.update_xaxes(range=[0, n_c], tickvals=[c + 0.5 for c in range(n_c)], ticktext=etiquetas, side="top",
                      showgrid=False, zeroline=False, fixedrange=True, title=None)
     fig.update_yaxes(range=[n_b, 0], tickvals=[b - 0.5 for b in range(1, n_b + 1)],
-                     ticktext=[f"<b>{b}</b>  {ui.fnum(tot_b.get(b, 0), 0)} qq" if tot_b.get(b, 0) else f"<b>{b}</b>"
+                     ticktext=[f"<b>{b}</b>  {ui.fnum(tot_b.get(b, 0))} qq" if tot_b.get(b, 0) else f"<b>{b}</b>"
                                for b in range(1, n_b + 1)],
                      showgrid=False, zeroline=False, fixedrange=True, title=None)
     return fig

@@ -57,7 +57,7 @@ def _linea_foto(nombre: str, qq: pd.Series, est: pd.Series, negrita=False) -> st
     if len(qq) == 1:
         return (f"{b0}{nombre}: {b1}<b>{ui.fnum(qq.iloc[0])} qq</b> · {ui.fnum(est.iloc[0], 0)} estibas "
                 f"({D.periodo_label(qq.index[0])})")
-    return (f"{b0}{nombre}: {b1}prom. <b>{ui.fnum(qq.mean())} qq</b> · {ui.fnum(est.mean(), 0)} estibas · "
+    return (f"{b0}{nombre}: {b1}prom. <b>{ui.fnum(qq.mean())} qq</b> · {ui.fnum(est.mean())} estibas · "
             f"máx. {ui.fnum(qq.max())} ({D.periodo_label(qq.idxmax())}) · "
             f"mín. {ui.fnum(qq.min())} ({D.periodo_label(qq.idxmin())})")
 

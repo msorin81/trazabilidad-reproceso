@@ -54,11 +54,11 @@ ui.ayuda_rango("resumen", bool(rango))
 fig = go.Figure()
 for name in ["Ingreso", "Disolución"]:
     fig.add_bar(x=flow.index, y=flow[name], name=name, marker_color=ui.FLOW_COLORS[name],
-                text=flow[name], texttemplate="%{y:,.0f}", textposition="outside",
+                text=flow[name], texttemplate="%{y:,.1f}", textposition="outside",
                 hovertemplate=f"{name}: %{{y:,.1f}} qq<extra></extra>")
 fig.add_scatter(x=flow.index, y=flow["Stock fin de mes"], name="Stock fin de mes", mode="lines+markers+text",
                 line=dict(color=ui.FLOW_COLORS["Stock fin de mes"], width=2), marker=dict(size=8),
-                text=[ui.fnum(v, 0) for v in flow["Stock fin de mes"]], textposition="top center",
+                text=[ui.fnum(v) for v in flow["Stock fin de mes"]], textposition="top center",
                 hovertemplate="Stock fin de mes: %{y:,.1f} qq<extra></extra>")
 fig.update_layout(barmode="group", hovermode="x unified")
 ui.style(fig, height=430)

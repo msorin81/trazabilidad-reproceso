@@ -55,12 +55,7 @@ def files_signature(data_dir: str) -> tuple:
 
 def _abrir(path: str) -> zipfile.ZipFile:
     """Abre el libro; si Excel/OneDrive lo tiene bloqueado, lee una copia temporal."""
-    try:
-        return zipfile.ZipFile(path)
-    except PermissionError:
-        tmp = os.path.join(tempfile.gettempdir(), "reproceso_" + os.path.basename(path))
-        shutil.copyfile(path, tmp)
-        return zipfile.ZipFile(tmp)
+    return D.abrir_libro(path)
 
 
 # ---------------------------------------------------------------------------

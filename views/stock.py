@@ -34,7 +34,7 @@ ui.kpi(k[0], "Stock del mes (qq)", ui.fnum(v),
        delta=None if v_prev is None else f"{ui.fnum(v - v_prev)} qq", delta_color="inverse",
        help=None if v_prev is None else f"Variación frente a {D.periodo_label(prev[-1])}.")
 ui.kpi(k[1], "Estibas", ui.fnum(len(snap), 0))
-ui.kpi(k[2], "Días prom. en stock", ui.fnum(snap["dias_en_stock"].mean(), 0),
+ui.kpi(k[2], "Días prom. en stock", ui.fnum(snap["dias_en_stock"].mean()),
        help="Fin de mes (u hoy, si es el mes en curso) − fecha de ingreso.")
 ui.kpi(k[3], "Estibas > 60 días", ui.fnum((snap["dias_en_stock"] > 60).sum(), 0))
 
@@ -67,7 +67,7 @@ for cat in [x for x in ui.CAT_COLORS if x in g["categoria"].unique()]:
 fig.update_layout(barmode="stack")
 tot_ag = g.groupby("rango", observed=False)["qq"].sum().reindex(ui.AGING_ORDER).fillna(0)
 ui.add_totals(fig, tot_ag.index, tot_ag.values)
-fig.update_traces(selector=dict(type="bar"), texttemplate="%{y:,.0f}", textposition="inside",
+fig.update_traces(selector=dict(type="bar"), texttemplate="%{y:,.1f}", textposition="inside",
                   textfont_color="#ffffff")
 fig.update_xaxes(categoryorder="array", categoryarray=ui.AGING_ORDER)
 ui.style(fig, height=340)

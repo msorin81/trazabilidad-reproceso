@@ -57,6 +57,13 @@ def main() -> int:
         print("ERROR: no se leyeron registros. ¿Están los archivos .xlsm en la carpeta?")
         return 1
     datos.update(D.load_extras(DATA_DIR))  # vínculos PDF por tiquete + inventario físico
+    fallidos = [a for a in datos["avisos"] + datos.get("extra_avisos", []) if "no se pudo leer" in a.lower()]
+    if fallidos:
+        # nunca publicar datos incompletos (p. ej. un libro bloqueado dejaría la web sin ese año)
+        print("ERROR: no se publica porque no se pudieron leer todos los libros:")
+        for a in fallidos:
+            print("  ", a)
+        return 4
     if not datos["inv"].empty:
         print(f"Inventario físico: {datos['inv']['fecha'].nunique()} pestañas, "
               f"última {datos['inv']['fecha'].max():%Y-%m-%d}")

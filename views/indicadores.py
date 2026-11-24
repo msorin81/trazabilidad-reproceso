@@ -50,7 +50,7 @@ ui.kpi(k[3], "Estibas > 30 / > 60 días", f'{ui.fnum(r["Estibas > 30 días"], 0)
 st.subheader("Ingreso mensual y promedio móvil de 3 meses")
 fig = go.Figure()
 fig.add_bar(x=med.index, y=med["Ingreso (qq)"], name="Ingreso", marker_color=ui.BLUE,
-            text=med["Ingreso (qq)"], texttemplate="%{y:,.0f}", textposition="outside",
+            text=med["Ingreso (qq)"], texttemplate="%{y:,.1f}", textposition="outside",
             hovertemplate="Ingreso: %{y:,.1f} qq<extra></extra>")
 fig.add_scatter(x=med.index, y=med["Prom. móvil 3M ingreso (qq)"], name="Promedio móvil 3M",
                 mode="lines+markers", line=dict(color=ui.ORANGE, width=2), marker=dict(size=8),
@@ -66,7 +66,7 @@ fig = go.Figure()
 for col, color in [("% Disolución", ui.ORANGE), ("% Stock pendiente", ui.AQUA)]:
     fig.add_scatter(x=med.index, y=med[col] * 100, name=col, mode="lines+markers+text",
                     line=dict(color=color, width=2), marker=dict(size=8),
-                    text=[ui.fnum(v * 100, 0) + "%" if pd.notna(v) else "" for v in med[col]],
+                    text=[ui.fnum(v * 100) + "%" if pd.notna(v) else "" for v in med[col]],
                     textposition="top center", hovertemplate=f"{col}: %{{y:.1f}} %<extra></extra>")
 ui.style(fig, height=360, ytitle="% del total de la hoja")
 fig.update_yaxes(range=[0, 115], tickformat=".0f", ticksuffix=" %")

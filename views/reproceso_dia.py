@@ -31,7 +31,7 @@ mx = d.loc[d.groupby("periodo")["qq"].idxmax()].sort_values("periodo")
 fig = go.Figure(go.Bar(
     x=mx["periodo"], y=mx["qq"], marker_color=ui.ORANGE, name="Máximo diario",
     customdata=mx["fecha"].dt.strftime("%d/%m/%Y"),
-    text=[ui.fnum(v, 0) for v in mx["qq"]], textposition="outside",
+    text=[ui.fnum(v) for v in mx["qq"]], textposition="outside",
     hovertemplate="Máximo: %{y:,.1f} qq<br>Día: %{customdata}<extra></extra>"))
 ui.style(fig, height=360, legend=False)
 fig.update_yaxes(range=[0, mx["qq"].max() * 1.18])
@@ -43,7 +43,7 @@ st.caption("Se etiquetan los 10 días de mayor reproceso; pasa el cursor sobre l
 top10 = set(d.nlargest(10, "qq").index)
 fig = go.Figure(go.Bar(x=d["fecha"], y=d["qq"], marker_color=ui.BLUE, name="qq por día",
                        customdata=d["estibas"],
-                       text=[f"{ui.fnum(q, 0)}<br>{f:%d/%m}" if i in top10 else "" for i, q, f in
+                       text=[f"{ui.fnum(q)}<br>{f:%d/%m}" if i in top10 else "" for i, q, f in
                              zip(d.index, d["qq"], d["fecha"])],
                        textposition="outside",
                        hovertemplate="%{x|%d/%m/%Y}<br>%{y:,.1f} qq · %{customdata} estibas<extra></extra>"))

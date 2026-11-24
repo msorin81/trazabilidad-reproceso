@@ -32,10 +32,10 @@ m["diferencia"] = m["qq_tiquete"] - m["qq_fisico"]
 st.subheader("Quintales por mes")
 fig = go.Figure()
 fig.add_bar(x=m["periodo"], y=m["qq_tiquete"], name="Tiquete báscula", marker_color=ui.BLUE,
-            text=m["qq_tiquete"], texttemplate="%{y:,.0f}", textposition="outside",
+            text=m["qq_tiquete"], texttemplate="%{y:,.1f}", textposition="outside",
             hovertemplate="Tiquete: %{y:,.1f} qq<extra></extra>")
 fig.add_bar(x=m["periodo"], y=m["qq_fisico"], name="Físico", marker_color=ui.ORANGE,
-            text=m["qq_fisico"], texttemplate="%{y:,.0f}", textposition="outside",
+            text=m["qq_fisico"], texttemplate="%{y:,.1f}", textposition="outside",
             hovertemplate="Físico: %{y:,.1f} qq<extra></extra>")
 fig.update_layout(barmode="group", bargroupgap=0.06)
 ui.style(fig, height=380)

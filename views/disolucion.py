@@ -38,7 +38,7 @@ k = st.columns(4)
 ui.kpi(k[0], "Disuelto total (qq)", ui.fnum(df["qq"].sum()))
 ui.kpi(k[1], "Prom. mensual (qq)", ui.fnum(df["qq"].sum() / max(meses, 1)))
 ui.kpi(k[2], "Estibas disueltas", ui.fnum(len(df), 0))
-ui.kpi(k[3], "Días prom. en stock", ui.fnum(df["dias_en_stock"].mean(), 0),
+ui.kpi(k[3], "Días prom. en stock", ui.fnum(df["dias_en_stock"].mean()),
        help="Promedio de días entre la fecha de ingreso y la fecha de reproceso.")
 
 st.subheader("Disolución mensual por categoría")

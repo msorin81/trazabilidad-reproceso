@@ -309,6 +309,25 @@ def _table_frame(cells: dict, rng: tuple, mapping: dict) -> pd.DataFrame:
     return df[[c for c in df.columns if not c.startswith("_x")]]
 
 
+def abrir_libro(path: str):
+    """Abre un .xlsx/.xlsm como zip. Si Excel u OneDrive lo tienen bloqueado (PermissionError), lee una copia
+    temporal: Windows sí permite copiarlo con CopyFileW aunque Python no pueda abrirlo directamente."""
+    import shutil
+    import tempfile
+    import zipfile
+    try:
+        return zipfile.ZipFile(path)
+    except PermissionError:
+        tmp = os.path.join(tempfile.gettempdir(), "reproceso_lectura_" + os.path.basename(path))
+        ok = False
+        if os.name == "nt":
+            import ctypes
+            ok = bool(ctypes.windll.kernel32.CopyFileW(os.path.abspath(path), tmp, False))
+        if not ok:
+            shutil.copyfile(path, tmp)
+        return zipfile.ZipFile(tmp)
+
+
 def read_workbook(path: str) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     import xml.etree.ElementTree as ET
     import zipfile
@@ -316,7 +335,7 @@ def read_workbook(path: str) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     anio = int(os.path.basename(path)[:4])
     archivo = os.path.basename(path)
     trazs, tiqs, avisos = [], [], []
-    with zipfile.ZipFile(path) as z:
+    with abrir_libro(path) as z:
         sst = _shared_strings(z)
         wb_rels = _rels(z, "xl/_rels/workbook.xml.rels")
         wb_xml = ET.fromstring(z.read("xl/workbook.xml"))
@@ -372,6 +391,8 @@ def clean_trazabilidad(raw: pd.DataFrame) -> pd.DataFrame:
     df["estado"] = _canonical(df["estado"])
     # filas vacías de la tabla de Excel (sin estado ni quintales) se descartan
     df = df[~(df["estado"].isna() & df["qq"].isna())].copy()
+    # fila de totales al final de la tabla de Excel (solo suma quintales y sacos: sin estado ni estiba)
+    df = df[~(df["estado"].isna() & df["estiba"].map(_clean_text).isna())].copy()
 
     df["periodo"] = pd.to_datetime(dict(year=df["anio"], month=df["mes"], day=1))
     for c in ["fecha_ingreso", "fecha_pesaje", "fecha_reproceso"]:

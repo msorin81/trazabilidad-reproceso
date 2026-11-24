@@ -76,7 +76,7 @@ def read_workbook(path: str) -> pd.DataFrame:
     import xml.etree.ElementTree as ET
     archivo = os.path.basename(path)
     anio = int(archivo[:4])
-    with zipfile.ZipFile(path) as z:
+    with D.abrir_libro(path) as z:
         sst = D._shared_strings(z)
         wb_rels = D._rels(z, "xl/_rels/workbook.xml.rels")
         wb = ET.fromstring(z.read("xl/workbook.xml"))

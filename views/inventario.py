@@ -93,7 +93,7 @@ for cond in orden:
     chips.append(f'<span style="display:inline-flex;align-items:center;gap:6px;margin:3px 14px 3px 0;opacity:{op}">'
                  f'<span style="width:16px;height:12px;background:{sw};border:1px solid #9A9B9D;'
                  f'display:inline-block"></span><span style="font-size:.85rem">{cond}'
-                 + (f' · <b>{ui.fnum(q, 0)} qq</b> ({n})' if n else "") + "</span></span>")
+                 + (f' · <b>{ui.fnum(q)} qq</b> ({n})' if n else "") + "</span></span>")
 marcas = u["color_texto"].dropna().map(lambda h: {"E46C0A": "naranja", "FFFF00": "amarillo"}.get(h, "otro color"))
 for nombre, cnt in marcas.value_counts().items():
     chips.append(f'<span style="display:inline-flex;align-items:center;gap:6px;margin:3px 14px 3px 0">'
@@ -124,7 +124,7 @@ else:
     nombres = []
     for z in zf.itertuples():
         q = u.loc[u["zona"] == z.zona, "qq"].sum()
-        nombres.append(f"{z.zona} · {ui.fnum(q, 0)} qq" if q else f"{z.zona} · vacía")
+        nombres.append(f"{z.zona} · {ui.fnum(q)} qq" if q else f"{z.zona} · vacía")
     tabs = st.tabs(nombres)
     for tab, z in zip(tabs, zf.itertuples()):
         with tab:
@@ -204,7 +204,7 @@ if not mens.empty:
     fin = fin.where(fin <= pd.Timestamp.today().normalize(), pd.Timestamp.today().normalize())
     fig.add_scatter(x=fin, y=mens.values, name="Stock trazabilidad (fin de mes)", mode="markers+text",
                     marker=dict(symbol="diamond", size=11, color=ui.ORANGE, line=dict(color="#FFFFFF", width=1)),
-                    text=[ui.fnum(v, 0) for v in mens.values], textposition="top center",
+                    text=[ui.fnum(v) for v in mens.values], textposition="top center",
                     hovertemplate="%{x|%b %Y}: %{y:,.1f} qq<extra>Trazabilidad</extra>")
 fig.add_vline(x=fecha, line=dict(color="#6D6E71", width=1, dash="dot"))
 ui.style(fig, height=360)

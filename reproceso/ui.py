@@ -90,7 +90,7 @@ def _scale() -> float:
     return st.session_state.get("font_scale", 1.0)
 
 
-def add_totals(fig: go.Figure, x, totals, horizontal=False, dec=0):
+def add_totals(fig: go.Figure, x, totals, horizontal=False, dec=1):
     """Etiqueta del total encima de barras apiladas (texto en tinta neutra, no en color de serie)."""
     x, totals = list(x), list(totals)
     txt = [fnum(t, dec) if t else "" for t in totals]
@@ -161,7 +161,7 @@ def stacked_by_category(df: pd.DataFrame, value="qq", x="periodo", title_hover="
         s = g[g["categoria"] == cat]
         if kind == "bar":
             fig.add_bar(x=s[x], y=s[value], name=cat, marker_color=cat_color(cat),
-                        text=s[value], texttemplate="%{y:,.0f}", textposition="inside",
+                        text=s[value], texttemplate="%{y:,.1f}", textposition="inside",
                         insidetextanchor="middle",
                         textfont_color="#0b0b0b" if cat_color(cat) == YELLOW else "#ffffff",
                         hovertemplate=f"%{{x|%b %Y}}<br>{cat}: %{{y:,.1f}} qq<extra></extra>")
