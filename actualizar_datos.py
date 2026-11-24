@@ -69,13 +69,13 @@ def main() -> int:
               f"última {datos['inv']['fecha'].max():%Y-%m-%d}")
     meta = D.export_snapshot(datos, DATA_DIR, SNAP_DIR, solo_si_cambia=True)
     if meta is None:
-        print("Sin cambios en los Excel desde la última publicación: no se publica nada.")
-        return 0
-    print(f"Instantánea guardada en {SNAP_DIR}")
-    print(f"  {meta['registros_trazabilidad']} registros de trazabilidad · {meta['registros_tiquetes']} tiquetes")
-    print(f"  Último movimiento registrado: {meta['ultimo_movimiento']}")
-    for a in meta["avisos"]:
-        print("  AVISO:", a)
+        print("Sin cambios en los Excel desde la última instantánea.")
+    else:
+        print(f"Instantánea guardada en {SNAP_DIR}")
+        print(f"  {meta['registros_trazabilidad']} registros de trazabilidad · {meta['registros_tiquetes']} tiquetes")
+        print(f"  Último movimiento registrado: {meta['ultimo_movimiento']}")
+        for a in meta["avisos"]:
+            print("  AVISO:", a)
 
     if "--sin-push" in sys.argv:
         return 0
@@ -84,19 +84,25 @@ def main() -> int:
         print("\n(git no está configurado: la instantánea quedó solo en este equipo)")
         return 0
 
-    def run(*a):
+    def run(*a, mostrar=True):
         r = subprocess.run([git, *a], cwd=APP_DIR, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", creationflags=NO_WINDOW)
         out = (r.stdout + r.stderr).strip()
-        if out:
+        if out and mostrar:
             print(out)
-        return r.returncode
+        return r.returncode, out
 
+    # se publica también una instantánea que quedó pendiente (p. ej. generada antes con --sin-push)
     run("add", "data")
-    if run("commit", "-m", f"Actualización de datos {meta['publicado']}") != 0:
-        print("\nNo hubo cambios para publicar.")
+    pendiente = run("status", "--porcelain", "data", mostrar=False)[1]
+    if pendiente:
+        cuando = meta["publicado"] if meta else dt.datetime.now().isoformat(timespec="minutes")
+        run("commit", "-m", f"Actualización de datos {cuando}")
+    adelante = run("rev-list", "--count", "@{u}..HEAD", mostrar=False)[1]
+    if not pendiente and adelante in ("", "0"):
+        print("\nNada pendiente por publicar: la web ya tiene estos datos.")
         return 0
-    if run("push") == 0:
+    if run("push")[0] == 0:
         print("\nPublicado en GitHub ✔ (la app web se actualiza en 1–2 minutos)")
         return 0
     print("\nERROR al hacer push. Revisa la conexión o las credenciales de GitHub.")

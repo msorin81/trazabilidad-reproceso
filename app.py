@@ -136,7 +136,7 @@ with st.sidebar:
                 ok, salida = st.session_state["_pub_res"]
                 if not ok:
                     st.error("No se pudo publicar. Revisa el detalle.")
-                elif "Sin cambios" in salida or "No hubo cambios" in salida:
+                elif "Nada pendiente" in salida or "No hubo cambios" in salida:
                     st.info("No hay cambios desde la última publicación.")
                 else:
                     st.success("Publicado ✔. La web se actualiza en 1–2 minutos.")
