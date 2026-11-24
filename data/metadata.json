@@ -1,5 +1,5 @@
 {
-  "publicado": "2026-11-24T09:33",
+  "publicado": "2026-11-24T10:01",
   "archivos": [
     {
       "archivo": "2021-Stock-Reproceso.xlsm",
@@ -23,7 +23,7 @@
     },
     {
       "archivo": "2026-Stock-Reproceso.xlsm",
-      "modificado": "2026-11-24T08:45"
+      "modificado": "2026-11-24T09:54"
     },
     {
       "archivo": "2026-Inventario_Fisico_Reproceso.xlsx",
@@ -31,11 +31,11 @@
     }
   ],
   "ultimo_movimiento": "2026-11-21",
-  "registros_trazabilidad": 10968,
+  "registros_trazabilidad": 10953,
   "registros_tiquetes": 925,
   "avisos": [
     "2026-Inventario_Fisico_Reproceso.xlsx · 2026-02-25: celdas que no tienen la forma «qq-estiba»: D17: «7 tinas»"
   ],
   "inventario_ultima_fecha": "2026-11-24",
-  "huella": "5f0eb1b4c30c2c8cb21b0f9384825140f2d18d58a4aa46187eab2954863b70aa"
+  "huella": "de7ec44ed3ad1fddf033493de8c936d97ee2bc1532d32c5f2303b231356d5227"
 }
