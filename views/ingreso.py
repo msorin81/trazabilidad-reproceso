@@ -2,6 +2,7 @@ import streamlit as st
 
 from reproceso import brand
 from reproceso import data as D
+from reproceso import seleccion as S
 from reproceso import ui
 
 c = ui.ctx()
@@ -19,10 +20,7 @@ ui.kpi(k[2], "Estibas", ui.fnum(len(df), 0))
 ui.kpi(k[3], "Causas distintas", ui.fnum(df["causa"].nunique(), 0))
 
 st.subheader("Ingreso mensual por categoría")
-fig = ui.stacked_by_category(df)
-ui.style(fig, height=380)
-ui.month_axis(fig)
-ui.show(fig)
+S.grafico_por_categoria(df, "ing", modo="suma", height=380)
 
 a, b = st.columns(2)
 with a:

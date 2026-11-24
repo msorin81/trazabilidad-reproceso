@@ -4,6 +4,7 @@ import streamlit as st
 
 from reproceso import brand
 from reproceso import data as D
+from reproceso import seleccion as S
 from reproceso import ui
 
 c = ui.ctx()
@@ -43,27 +44,7 @@ if (snap["dias_en_stock"] > 90).any():
                f"estibas) llevan más de 90 días en stock en {D.periodo_label(sel)}.", risk=True)
 
 st.subheader("Evolución del stock de fin de mes por categoría")
-per_base = sorted(pd.Timestamp(p) for p in base["periodo"].unique())
-mes_qq = df.groupby("periodo")["qq"].sum().reindex(per_base).fillna(0)
-mes_est = df.groupby("periodo").size().reindex(per_base).fillna(0)
-rango = ui.rango_elegido("stock", per_base)
-ui.ayuda_rango("stock", bool(rango))
-fig = ui.stacked_by_category(df)
-ui.style(fig, height=380 if rango else 360)
-ui.month_axis(fig)
-if rango:
-    s = mes_qq.loc[rango[0]:rango[1]]
-    e = mes_est.loc[rango[0]:rango[1]]
-    ui.headroom(fig, mes_qq.max(), 1.6)  # espacio arriba para la tarjeta
-    ui.marcar_rango(fig, rango)
-    ui.tarjeta_rango(fig, rango, [
-        f"Stock promedio: <b>{ui.fnum(s.mean())} qq</b> · {ui.fnum(e.mean(), 0)} estibas",
-        f"Máx.: {ui.fnum(s.max())} ({D.periodo_label(s.idxmax())}) · "
-        f"Mín.: {ui.fnum(s.min())} ({D.periodo_label(s.idxmin())})",
-        f"Variación: <b>{ui.fnum(s.iloc[-1] - s.iloc[0])} qq</b> "
-        f"({D.periodo_label(s.index[0])} → {D.periodo_label(s.index[-1])})",
-    ])
-ui.show_seleccionable(fig, "stock")
+S.grafico_por_categoria(df, "stock", modo="foto", height=360)
 
 a, b = st.columns(2)
 with a:

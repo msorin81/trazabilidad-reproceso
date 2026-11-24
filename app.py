@@ -18,7 +18,7 @@ def _recargar_modulos_cambiados():
     cambiaron (o los que vienen de una versión sin marca de carga), en orden de dependencias."""
     import importlib
     import sys
-    for nombre in ("reproceso.data", "reproceso.inventario", "reproceso.vinculos", "reproceso.ui",
+    for nombre in ("reproceso.data", "reproceso.inventario", "reproceso.vinculos", "reproceso.ui", "reproceso.seleccion",
                    "reproceso.brand", "reproceso.plano", "reproceso.escritura"):
         m = sys.modules.get(nombre)
         if m is None or not getattr(m, "__file__", None):
