@@ -313,7 +313,7 @@ def no_data():
 # ---------------------------------------------------------------------------
 # Selección de un rango de meses DENTRO del gráfico → tarjeta flotante con las métricas
 # ---------------------------------------------------------------------------
-AYUDA_RANGO = "Arrastra sobre el gráfico (o haz clic en una barra o punto) para resumir esos meses."
+AYUDA_RANGO = "Arrastra el mouse sobre el gráfico para resumir esos meses (para un solo mes, arrastra solo sobre él)."
 import time as _time
 _CARGADO = _time.time()  # ver app.py: recarga del módulo si el archivo cambia (Streamlit Cloud)
 
@@ -366,14 +366,90 @@ def marcar_rango(fig: go.Figure, rango):
                       fillcolor="#6D6E71", opacity=0.10, line_width=0, layer="below")
 
 
-def tarjeta_rango(fig: go.Figure, rango, lineas: list[str]):
-    """Tarjeta dentro del gráfico (esquina superior izquierda) con las métricas del rango."""
-    n = len(pd.period_range(rango[0], rango[1], freq="M"))
-    titulo = f"<b>{etiqueta_rango(rango)}</b>  <span style='color:#6D6E71'>({n} {'mes' if n == 1 else 'meses'})</span>"
+def tarjeta(fig: go.Figure, titulo: str, lineas: list[str]):
+    """Tarjeta flotante dentro del gráfico (esquina superior izquierda)."""
     fig.add_annotation(xref="paper", yref="paper", x=0.005, y=0.99, xanchor="left", yanchor="top",
                        align="left", showarrow=False, text="<br>".join([titulo, *lineas]),
                        bgcolor="rgba(255,255,255,0.96)", bordercolor="#267939", borderwidth=1.5, borderpad=8,
                        font=dict(size=round(13 * _scale()), color="#1A1A1A"))
+
+
+def tarjeta_rango(fig: go.Figure, rango, lineas: list[str]):
+    """Tarjeta dentro del gráfico con las métricas del rango de meses."""
+    n = len(pd.period_range(rango[0], rango[1], freq="M"))
+    tarjeta(fig, f"<b>{etiqueta_rango(rango)}</b>  <span style='color:#6D6E71'>({n} {'mes' if n == 1 else 'meses'})</span>",
+            lineas)
+
+
+# --- selección por mes Y categoría (gráficos apilados): clic suma/quita un segmento, arrastrar = rango
+def _al_seleccionar_cat(key: str, wkey: str):
+    ev = st.session_state.get(wkey)
+    nombres = st.session_state.get(f"_trazas_{key}", [])
+    try:
+        sel = ev["selection"]
+        pts, caja = sel["points"] or [], sel.get("box") or []
+    except Exception:  # noqa: BLE001
+        return
+    elegidos = set()
+    for p in pts:
+        try:
+            cn = p.get("curve_number", p.get("curveNumber"))
+            nombre = nombres[cn] if cn is not None and cn < len(nombres) else None
+            elegidos.add((_mes(p["x"]), nombre))  # nombre None = etiqueta de total → mes completo
+        except Exception:  # noqa: BLE001
+            continue
+    actual = set(st.session_state.get(f"_sel_{key}") or [])
+    if caja or len(elegidos) != 1:
+        nuevo = elegidos                      # recuadro: reemplaza
+    else:
+        nuevo = actual ^ elegidos             # clic: agrega o quita ese segmento
+    st.session_state[f"_sel_{key}"] = sorted(nuevo, key=lambda t: (t[0], str(t[1]))) or None
+    # identidad nueva para el gráfico: tras redibujarlo, Streamlit no enviaba los clics siguientes
+    st.session_state[f"_v_{key}"] = st.session_state.get(f"_v_{key}", 0) + 1
+
+
+def seleccion_cat(key: str, periodos) -> list[tuple]:
+    """[(mes, categoría | None)] elegidos, solo de los meses del filtro actual."""
+    meses = {_mes(p) for p in periodos}
+    return [(m, c) for m, c in (st.session_state.get(f"_sel_{key}") or []) if m in meses]
+
+
+def ayuda_seleccion(key: str, activo: bool, texto: str):
+    if not activo:
+        st.caption(texto)
+        return
+    a, b = st.columns([5, 1], vertical_alignment="center")
+    a.caption(texto)
+    b.button("✕ Quitar", key=f"clr_{key}", **WIDE, help="Quitar la selección",
+             on_click=lambda: st.session_state.update({f"_sel_{key}": None}))
+
+
+def resaltar_seleccion(fig: go.Figure, sel: list[tuple]):
+    """Atenúa los segmentos no elegidos (los elegidos quedan con su color pleno)."""
+    if not sel:
+        return
+    # Se usa la selección nativa de Plotly (selectedpoints): una opacidad por punto puesta a mano impedía
+    # que el gráfico enviara los clics siguientes.
+    meses_total = {m for m, c in sel if c is None}
+    for tr in fig.data:
+        if tr.type != "bar" or tr.x is None:
+            continue
+        tr.selectedpoints = [i for i, x in enumerate(tr.x) if _mes(x) in meses_total or (_mes(x), tr.name) in sel]
+        tr.selected = dict(marker=dict(opacity=1))
+        tr.unselected = dict(marker=dict(opacity=0.3))
+
+
+def show_seleccionable_cat(fig: go.Figure, key: str):
+    """Selección por clic. Streamlit fuerza clickmode='event' (sin seleccionar con clic) cuando el gráfico está
+    en modo «arrastrar para seleccionar», así que aquí el arrastre queda inactivo (ejes fijos) y el clic
+    selecciona; el recuadro sigue disponible en la barra de herramientas del gráfico."""
+    st.session_state[f"_trazas_{key}"] = [tr.name for tr in fig.data]
+    fig.update_layout(dragmode="zoom")
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
+    wkey = f"chart_{key}_{st.session_state.get(f'_v_{key}', 0)}"
+    st.plotly_chart(fig, **WIDE, config={"displaylogo": False}, key=wkey,
+                    on_select=lambda k=key, w=wkey: _al_seleccionar_cat(k, w), selection_mode=("box", "points"))
 
 
 def show_seleccionable(fig: go.Figure, key: str):
