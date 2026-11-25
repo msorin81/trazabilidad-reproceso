@@ -15,6 +15,7 @@ NOMBRE = f1.radio("Analizar", ["Disolución", "Ingreso", "Stock fin de mes"], ho
                   help="Disolución: estibas disueltas o mezcladas. Ingreso: quintales cuya fecha de ingreso cae "
                        "en el mes de la hoja. Stock fin de mes: estado «Cuantificado» al cierre de cada mes.")
 ES_STOCK = NOMBRE == "Stock fin de mes"
+MES_A_MES = False
 if NOMBRE == "Disolución":
     estados_all = sorted(c["traz"]["estado"].unique())
     estados = f2.multiselect("Estados que cuentan como disolución", estados_all,
@@ -25,10 +26,80 @@ elif NOMBRE == "Ingreso":
 else:
     fuente = D.stock(c["traz_dim"])
     # el stock es una foto de cada cierre: no se suma por año
-    MEDIDA_STOCK = f2.radio("Comparar", ["Promedio mensual del año", "Cierre del último mes comparable"],
+    MEDIDA_STOCK = f2.radio("Comparar", ["Mes a mes", "Promedio mensual del año", "Cierre del último mes comparable"],
                             horizontal=True, key="hist_stock_medida",
-                            help="Promedio: promedio del stock de cierre de los meses del periodo de cada año. "
+                            help="Mes a mes: stock al cierre de cada mes, una línea por año. "
+                                 "Promedio: promedio del stock de cierre de los meses del periodo de cada año. "
                                  "Cierre: stock al cierre del mismo mes (el último mes con datos del año actual).")
+    MES_A_MES = MEDIDA_STOCK == "Mes a mes" and not fuente.empty
+    if MES_A_MES:
+        _anio_act = int(max(c["anios"])) if c["anios"] else int(fuente["anio"].max())
+        hojas_m = c["traz_dim"][["anio", "mes"]].drop_duplicates()
+        hojas_m = hojas_m[hojas_m["anio"] <= _anio_act].sort_values(["anio", "mes"])
+        mm = fuente[fuente["anio"] <= _anio_act].groupby(["anio", "mes", "categoria"])["qq"].sum() \
+            .unstack(fill_value=0.0)
+        # los meses con hoja pero sin stock quedan en 0 (no desaparecen de la línea)
+        mm = mm.reindex(pd.MultiIndex.from_frame(hojas_m), fill_value=0.0)
+        cats_m = [x for x in ui.CAT_COLORS if x in mm.columns and mm[x].any()] + \
+                 [x for x in mm.columns if x not in ui.CAT_COLORS and mm[x].any()]
+        cat_sel = st.radio("Categoría", ["Todas"] + cats_m, horizontal=True, key="hist_stock_cat")
+        serie = mm.sum(axis=1) if cat_sel == "Todas" else mm[cat_sel]
+        tabla = serie.unstack("mes").sort_index()  # filas: año · columnas: mes
+        anios_m = [int(a) for a in tabla.index]
+        previos_m = [a for a in anios_m if a < _anio_act]
+        st.caption(f"Stock «Cuantificado» al cierre de cada mes · categoría: **{cat_sel}** · año actual "
+                   f"**{_anio_act}** en verde. Haz clic en la leyenda para ocultar o mostrar un año; doble clic deja "
+                   "solo ese.")
+
+        def _rampa(n):  # azules de claro (años más antiguos) a oscuro (año anterior al actual)
+            a, b = (198, 219, 245), (16, 66, 129)
+            return ["#%02x%02x%02x" % tuple(round(a[k] + (b[k] - a[k]) * (i / max(n - 1, 1))) for k in range(3))
+                    for i in range(n)]
+
+        fig = go.Figure()
+        for anio, color in zip(previos_m, _rampa(len(previos_m))):
+            fila = tabla.loc[anio].dropna()
+            fig.add_scatter(x=[D.MESES[m - 1] for m in fila.index], y=fila.values, name=str(anio),
+                            mode="lines+markers", line=dict(color=color, width=1.8), marker=dict(size=6),
+                            hovertemplate=f"{anio} · %{{x}}: %{{y:,.1f}} qq<extra></extra>")
+        if len(previos_m) >= 2:
+            prom = tabla.loc[previos_m].mean()
+            fig.add_scatter(x=[D.MESES[m - 1] for m in prom.index], y=prom.values,
+                            name=f"Promedio {previos_m[0]}–{previos_m[-1]}", mode="lines",
+                            line=dict(color="#6D6E71", width=2, dash="dot"),
+                            hovertemplate="Promedio años anteriores · %{x}: %{y:,.1f} qq<extra></extra>")
+        if _anio_act in anios_m:
+            fila = tabla.loc[_anio_act].dropna()
+            fig.add_scatter(x=[D.MESES[m - 1] for m in fila.index], y=fila.values, name=f"{_anio_act} (actual)",
+                            mode="lines+markers+text", line=dict(color="#267939", width=3.5),
+                            marker=dict(size=9, color="#267939", line=dict(color="#FFFFFF", width=1.5)),
+                            text=[ui.fnum(v) for v in fila.values], textposition="top center",
+                            hovertemplate=f"{_anio_act} · %{{x}}: %{{y:,.1f}} qq<extra></extra>")
+        fig.update_layout(legend_itemclick="toggle", legend_itemdoubleclick="toggleothers", hovermode="x unified")
+        ui.style(fig, height=430)
+        fig.update_xaxes(type="category", categoryorder="array", categoryarray=D.MESES)
+        fig.update_layout(hovermode="x unified")
+        ui.headroom(fig, float(tabla.max().max() or 1), 1.15)
+        st.markdown(f"**Stock al cierre de cada mes, por año (qq) · {cat_sel}**")
+        ui.show(fig)
+
+        t = tabla.copy()
+        t.columns = [D.MESES[m - 1] for m in t.columns]
+        t["Promedio"] = tabla.mean(axis=1)
+        t.index = [str(a) for a in anios_m]
+        t.index.name = "Año"
+        if _anio_act in anios_m and (_anio_act - 1) in anios_m:
+            ant = tabla.loc[_anio_act - 1]
+            act = tabla.loc[_anio_act]
+            var = ((act - ant) / ant.where(ant != 0) * 100)
+            var.index = [D.MESES[m - 1] for m in var.index]
+            var["Promedio"] = (t.loc[str(_anio_act), "Promedio"] / t.loc[str(_anio_act - 1), "Promedio"] - 1) * 100 \
+                if t.loc[str(_anio_act - 1), "Promedio"] else None
+            t.loc[f"Var. % vs {_anio_act - 1}"] = var
+        st.markdown("**Tabla: stock al cierre de cada mes (qq)**")
+        ui.show_pivot(t)
+        st.caption("La última fila es la variación porcentual del año actual frente al anterior en cada mes "
+                   "(vacía si el año anterior tenía 0 qq en ese mes).")
 if fuente.empty:
     ui.no_data(); st.stop()
 
@@ -36,7 +107,9 @@ if fuente.empty:
 # en la barra lateral se toma como «año actual»).
 # ---------------------------------------------------------------------------
 hist = fuente
-if hist["anio"].nunique() < 2:
+if MES_A_MES:
+    pass  # la vista mes a mes del stock ya se dibujó arriba
+elif hist["anio"].nunique() < 2:
     st.info(f"Se necesitan al menos dos años con {NOMBRE.lower()} para comparar.")
 else:
     anio_act = int(max(c["anios"])) if c["anios"] else int(hist["anio"].max())
