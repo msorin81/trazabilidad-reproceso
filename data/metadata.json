@@ -1,5 +1,5 @@
 {
-  "publicado": "2026-11-24T10:01",
+  "publicado": "2026-11-25T10:21",
   "archivos": [
     {
       "archivo": "2021-Stock-Reproceso.xlsm",
@@ -37,5 +37,5 @@
     "2026-Inventario_Fisico_Reproceso.xlsx · 2026-02-25: celdas que no tienen la forma «qq-estiba»: D17: «7 tinas»"
   ],
   "inventario_ultima_fecha": "2026-11-24",
-  "huella": "de7ec44ed3ad1fddf033493de8c936d97ee2bc1532d32c5f2303b231356d5227"
+  "huella": "275f842bd9f94b02a40be745f14ee84d0188d48643c653acaa807ca9bd8b4dbe"
 }
