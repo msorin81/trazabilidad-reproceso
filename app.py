@@ -190,6 +190,7 @@ pg = st.navigation(**NAV_EXTRA, pages={
         st.Page(os.path.join(V, "ingreso.py"), title="Ingreso por mes", icon="📥", url_path="ingreso"),
         st.Page(os.path.join(V, "stock.py"), title="Stock fin de mes", icon="📦", url_path="stock_fin_mes"),
         st.Page(os.path.join(V, "disolucion.py"), title="Disolución", icon="💧", url_path="disolucion"),
+        st.Page(os.path.join(V, "historico.py"), title="Histórico interanual", icon="📈", url_path="historico"),
         st.Page(os.path.join(V, "reproceso_dia.py"), title="Reproceso por día", icon="📅",
                 url_path="reproceso_dia"),
         st.Page(os.path.join(V, "indicadores.py"), title="Indicadores (Power BI)", icon="📊",
