@@ -11,16 +11,24 @@ c = ui.ctx()
 brand.header("Histórico interanual", "Año actual frente a los años anteriores: cantidad y variación porcentual")
 
 f1, f2 = st.columns([1, 2])
-NOMBRE = f1.radio("Analizar", ["Disolución", "Ingreso"], horizontal=True, key="hist_medida",
+NOMBRE = f1.radio("Analizar", ["Disolución", "Ingreso", "Stock fin de mes"], horizontal=True, key="hist_medida",
                   help="Disolución: estibas disueltas o mezcladas. Ingreso: quintales cuya fecha de ingreso cae "
-                       "en el mes de la hoja.")
+                       "en el mes de la hoja. Stock fin de mes: estado «Cuantificado» al cierre de cada mes.")
+ES_STOCK = NOMBRE == "Stock fin de mes"
 if NOMBRE == "Disolución":
     estados_all = sorted(c["traz"]["estado"].unique())
     estados = f2.multiselect("Estados que cuentan como disolución", estados_all,
                              default=[e for e in D.ESTADOS_DISOLUCION if e in estados_all], key="hist_estados")
     fuente = D.disolucion(c["traz_dim"], estados or None)
-else:
+elif NOMBRE == "Ingreso":
     fuente = D.ingreso(c["traz_dim"])
+else:
+    fuente = D.stock(c["traz_dim"])
+    # el stock es una foto de cada cierre: no se suma por año
+    MEDIDA_STOCK = f2.radio("Comparar", ["Promedio mensual del año", "Cierre del último mes comparable"],
+                            horizontal=True, key="hist_stock_medida",
+                            help="Promedio: promedio del stock de cierre de los meses del periodo de cada año. "
+                                 "Cierre: stock al cierre del mismo mes (el último mes con datos del año actual).")
 if fuente.empty:
     ui.no_data(); st.stop()
 
@@ -45,7 +53,24 @@ else:
     a1.caption(f"Año actual: **{anio_act}** · {periodo_txt}. Haz clic en la leyenda para ocultar o mostrar una "
                "serie (p. ej. Avería); doble clic deja solo esa.")
 
-    g = hist.groupby(["anio", "categoria"])["qq"].sum().unstack(fill_value=0.0)
+    if not ES_STOCK:
+        g = hist.groupby(["anio", "categoria"])["qq"].sum().unstack(fill_value=0.0)
+        TITULO = f"Quintales de {NOMBRE.lower()} por año"
+    else:
+        # stock por mes y categoría; los meses con hoja pero sin stock cuentan como 0 (no se omiten del promedio)
+        hojas = c["traz_dim"][["anio", "mes"]].drop_duplicates()
+        hojas = hojas[hojas["anio"] <= anio_act]
+        if mismo:
+            hojas = hojas[hojas["mes"] <= ult_mes]
+        m = hist.groupby(["anio", "mes", "categoria"])["qq"].sum().unstack(fill_value=0.0)
+        m = m.reindex(pd.MultiIndex.from_frame(hojas.sort_values(["anio", "mes"])), fill_value=0.0)
+        if MEDIDA_STOCK.startswith("Promedio"):
+            g = m.groupby(level="anio").mean()
+            TITULO = f"Stock de fin de mes: promedio mensual por año (qq, {periodo_txt})"
+        else:
+            g = m.xs(ult_mes, level="mes") if ult_mes in m.index.get_level_values("mes") else m.iloc[0:0]
+            TITULO = f"Stock al cierre de {D.MESES_LARGO[ult_mes - 1].lower()} de cada año (qq)"
+        g = g.loc[:, (g != 0).any(axis=0)]
     cats = [x for x in ui.CAT_COLORS if x in g.columns] + [x for x in g.columns if x not in ui.CAT_COLORS]
     g = g[cats]
     g["Total"] = g[cats].sum(axis=1)
@@ -69,7 +94,7 @@ else:
         fig.add_vrect(x0=i - 0.5, x1=i + 0.5, fillcolor="#267939", opacity=0.08, line_width=0, layer="below")
         fig.add_annotation(x=i, y=1, yref="paper", yanchor="bottom", showarrow=False,
                            text=f"<b>Año actual {anio_act}</b>", font=dict(color="#267939", size=12))
-    st.markdown(f"**Quintales de {NOMBRE.lower()} por año**")
+    st.markdown(f"**{TITULO}**")
     ui.show(fig)
 
     # 2) variación % del año actual frente a cada año anterior
@@ -101,7 +126,7 @@ else:
         bajo = min(min(vals), 0)
         fig.update_yaxes(range=[bajo * 1.3 - (alto * 0.08 if bajo < 0 else 0), alto * 1.2])
         st.markdown(f"**Variación de {anio_act} frente a cada año anterior** "
-                    f"<span style='color:#6D6E71;font-size:.85rem'>(positivo = más {NOMBRE.lower()} que ese año; "
+                    f"<span style='color:#6D6E71;font-size:.85rem'>(positivo = más {'stock' if ES_STOCK else NOMBRE.lower()} que ese año; "
                     "negativo = menos)</span>", unsafe_allow_html=True)
         ui.show(fig)
 
