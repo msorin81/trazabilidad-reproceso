@@ -87,6 +87,11 @@ else:
     # los años son texto (categorías): si no, Plotly los toma como números y descarta «<b>2026</b>»
     fig.update_xaxes(type="category")
     fig.update_layout(hovermode="closest", uniformtext=dict(mode="show", minsize=8))
+    if anio_act in anios:  # resaltar el año actual: fondo sombreado + rótulo
+        i = anios.index(anio_act)
+        fig.add_vrect(x0=i - 0.5, x1=i + 0.5, fillcolor="#267939", opacity=0.08, line_width=0, layer="below")
+        fig.add_annotation(x=i, y=1, yref="paper", yanchor="bottom", showarrow=False,
+                           text=f"<b>Año actual {anio_act}</b>", font=dict(color="#267939", size=12))
     st.markdown("**Quintales disueltos por año**")
     ui.show(fig)
 
@@ -104,7 +109,7 @@ else:
                 txt.append("" if v is None else (("+" if v > 0 else "") + ui.fnum(v) + " %"))
                 hov.append(f"{cat}: {anio_act} {ui.fnum(act[cat])} qq vs {a} {ui.fnum(prev)} qq · "
                            f"diferencia {('+' if act[cat] - prev > 0 else '')}{ui.fnum(act[cat] - prev)} qq")
-            fig.add_bar(x=[f"vs {a}" for a in previos], y=vals, name=cat, text=txt, textposition="outside",
+            fig.add_bar(x=[f"{anio_act} vs {a}" for a in previos], y=vals, name=cat, text=txt, textposition="outside",
                         cliponaxis=False, hovertext=hov, hoverinfo="text",
                         marker_color=ui.cat_color(cat) if cat != "Total" else "#6D6E71")
         fig.add_hline(y=0, line=dict(color="#6D6E71", width=1))
