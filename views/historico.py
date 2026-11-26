@@ -1,4 +1,5 @@
 """Histórico interanual: el año actual frente a los años anteriores, por categoría (cantidad y %)."""
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -10,52 +11,81 @@ from reproceso import ui
 c = ui.ctx()
 brand.header("Histórico interanual", "Año actual frente a los años anteriores: cantidad y variación porcentual")
 
-f1, f2 = st.columns([1, 2])
-NOMBRE = f1.radio("Analizar", ["Disolución", "Ingreso", "Stock fin de mes"], horizontal=True, key="hist_medida",
-                  help="Disolución: estibas disueltas o mezcladas. Ingreso: quintales cuya fecha de ingreso cae "
-                       "en el mes de la hoja. Stock fin de mes: estado «Cuantificado» al cierre de cada mes.")
-ES_STOCK = NOMBRE == "Stock fin de mes"
-MES_A_MES = False
-if NOMBRE == "Disolución":
-    estados_all = sorted(c["traz"]["estado"].unique())
-    estados = f2.multiselect("Estados que cuentan como disolución", estados_all,
-                             default=[e for e in D.ESTADOS_DISOLUCION if e in estados_all], key="hist_estados")
-    fuente = D.disolucion(c["traz_dim"], estados or None)
-elif NOMBRE == "Ingreso":
-    fuente = D.ingreso(c["traz_dim"])
-else:
-    fuente = D.stock(c["traz_dim"])
-    # el stock es una foto de cada cierre: no se suma por año
-    MEDIDA_STOCK = f2.radio("Comparar", ["Mes a mes", "Promedio mensual del año", "Cierre del último mes comparable"],
-                            horizontal=True, key="hist_stock_medida",
-                            help="Mes a mes: stock al cierre de cada mes, una línea por año. "
-                                 "Promedio: promedio del stock de cierre de los meses del periodo de cada año. "
-                                 "Cierre: stock al cierre del mismo mes (el último mes con datos del año actual).")
-    MES_A_MES = MEDIDA_STOCK == "Mes a mes" and not fuente.empty
-    if MES_A_MES:
-        _anio_act = int(max(c["anios"])) if c["anios"] else int(fuente["anio"].max())
-        hojas_m = c["traz_dim"][["anio", "mes"]].drop_duplicates()
-        hojas_m = hojas_m[hojas_m["anio"] <= _anio_act].sort_values(["anio", "mes"])
-        mm = fuente[fuente["anio"] <= _anio_act].groupby(["anio", "mes", "categoria"])["qq"].sum() \
-            .unstack(fill_value=0.0)
-        # los meses con hoja pero sin stock quedan en 0 (no desaparecen de la línea)
-        mm = mm.reindex(pd.MultiIndex.from_frame(hojas_m), fill_value=0.0)
-        cats_m = [x for x in ui.CAT_COLORS if x in mm.columns and mm[x].any()] + \
-                 [x for x in mm.columns if x not in ui.CAT_COLORS and mm[x].any()]
-        cat_sel = st.radio("Categoría", ["Todas"] + cats_m, horizontal=True, key="hist_stock_cat")
-        serie = mm.sum(axis=1) if cat_sel == "Todas" else mm[cat_sel]
-        tabla = serie.unstack("mes").sort_index()  # filas: año · columnas: mes
-        anios_m = [int(a) for a in tabla.index]
-        previos_m = [a for a in anios_m if a < _anio_act]
-        st.caption(f"Stock «Cuantificado» al cierre de cada mes · categoría: **{cat_sel}** · año actual "
-                   f"**{_anio_act}** en verde. Haz clic en la leyenda para ocultar o mostrar un año; doble clic deja "
-                   "solo ese.")
 
-        def _rampa(n):  # azules de claro (años más antiguos) a oscuro (año anterior al actual)
-            a, b = (198, 219, 245), (16, 66, 129)
-            return ["#%02x%02x%02x" % tuple(round(a[k] + (b[k] - a[k]) * (i / max(n - 1, 1))) for k in range(3))
-                    for i in range(n)]
+def _rampa(n):  # azules de claro (años más antiguos) a oscuro (año anterior al actual)
+    a, b = (198, 219, 245), (16, 66, 129)
+    return ["#%02x%02x%02x" % tuple(round(a[k] + (b[k] - a[k]) * (i / max(n - 1, 1))) for k in range(3))
+            for i in range(n)]
 
+
+def _mes_a_mes(fuente: pd.DataFrame, nombre: str, es_stock: bool):
+    """Cada mes de cada año: mapa de calor (año × mes) o líneas por año, ranking de meses y tabla."""
+    anio_act = int(max(c["anios"])) if c["anios"] else int(fuente["anio"].max())
+    lbl = {"Disolución": "reproceso (disolución)", "Ingreso": "ingreso"}.get(nombre, "stock al cierre")
+    hojas_m = c["traz_dim"][["anio", "mes"]].drop_duplicates()
+    hojas_m = hojas_m[hojas_m["anio"] <= anio_act].sort_values(["anio", "mes"])
+    mm = fuente[fuente["anio"] <= anio_act].groupby(["anio", "mes", "categoria"])["qq"].sum() \
+        .unstack(fill_value=0.0)
+    # los meses con hoja pero sin movimiento quedan en 0 (no desaparecen); los meses sin hoja quedan vacíos
+    mm = mm.reindex(pd.MultiIndex.from_frame(hojas_m), fill_value=0.0)
+    cats_m = [x for x in ui.CAT_COLORS if x in mm.columns and mm[x].any()] + \
+             [x for x in mm.columns if x not in ui.CAT_COLORS and mm[x].any()]
+    r1, r2 = st.columns([3, 1], vertical_alignment="bottom")
+    cat_sel = r1.radio("Categoría", ["Todas"] + cats_m, horizontal=True, key=f"hist_mm_cat_{nombre}")
+    ver = r2.radio("Ver como", ["Mapa de calor", "Líneas"], index=1 if es_stock else 0, horizontal=True,
+                   key=f"hist_mm_ver_{nombre}")
+    serie = mm.sum(axis=1) if cat_sel == "Todas" else mm[cat_sel]
+    tabla = serie.unstack("mes").reindex(columns=range(1, 13)).sort_index()  # filas: año · columnas: mes
+    anios_m = [int(a) for a in tabla.index]
+    previos_m = [a for a in anios_m if a < anio_act]
+
+    # ranking: los meses (de cualquier año) con más quintales
+    s = serie.dropna()
+    s = s[s > 0].sort_values(ascending=False)
+    if s.empty:
+        st.info(f"No hay {lbl} para la categoría {cat_sel}.")
+        return
+    (a_max, m_max), v_max = s.index[0], float(s.iloc[0])
+    top = " · ".join(f"{i}.º <b>{D.MESES[m - 1]} {a}</b> ({ui.fnum(v)} qq)"
+                     for i, ((a, m), v) in enumerate(s.head(3).items(), start=1))
+    st.markdown(f"<div style='border-left:4px solid #D35E13;padding:4px 10px;margin:2px 0 6px'>"
+                f"Meses con mayor {lbl} · <b>{cat_sel}</b>: {top}</div>", unsafe_allow_html=True)
+
+    if ver == "Mapa de calor":
+        # filas y columnas en posiciones 0, 1, 2…: los años como texto confunden a Plotly (eje numérico)
+        ylab = [f"<b>{a}</b>" if a == anio_act else str(a) for a in anios_m]
+        z = tabla.values.astype(float)
+        zmax = float(np.nanmax(z)) or 1.0
+        n = len(anios_m)
+        cd = [[f"{D.MESES[j]} {a}" for j in range(12)] for a in anios_m]
+        fig = go.Figure(go.Heatmap(
+            z=z, x=list(range(12)), y=list(range(n)), zmin=0, zmax=zmax, xgap=3, ygap=3, hoverongaps=False,
+            customdata=cd, colorscale=[[0, "#F1F7F2"], [0.5, "#74B383"], [1, "#16502A"]],
+            colorbar=dict(title=dict(text="qq"), thickness=12, tickformat=",.0f"),
+            hovertemplate="%{customdata}: %{z:,.1f} qq<extra></extra>"))
+        for i in range(n):
+            for j in range(12):
+                v = z[i, j]
+                if np.isnan(v):
+                    continue
+                fig.add_annotation(x=j, y=i, text=ui.fnum(v), showarrow=False,
+                                   font=dict(size=round(11 * ui._scale()),
+                                             color="#FFFFFF" if v > 0.55 * zmax else "#1A1A1A"))
+        # el mes máximo, con marco naranja
+        i, j = anios_m.index(int(a_max)), int(m_max) - 1
+        fig.add_shape(type="rect", x0=j - 0.5, x1=j + 0.5, y0=i - 0.5, y1=i + 0.5,
+                      line=dict(color="#D35E13", width=3), fillcolor="rgba(0,0,0,0)")
+        ui.style(fig, height=110 + 46 * n, legend=False, ytitle=None)
+        fig.update_xaxes(tickvals=list(range(12)), ticktext=D.MESES, side="top", range=[-0.5, 11.5],
+                         showgrid=False, zeroline=False)
+        fig.update_yaxes(tickvals=list(range(n)), ticktext=ylab, range=[n - 0.5, -0.5], showgrid=False,
+                         zeroline=False, rangemode="normal", tickformat=None, automargin=True)
+        fig.update_layout(margin=dict(l=64, r=8, t=40, b=8))
+        st.markdown(f"**Quintales de {lbl} por mes y año · {cat_sel}** "
+                    "<span style='color:#6D6E71;font-size:.85rem'>(más oscuro = más quintales; "
+                    "marco naranja = mes máximo; vacío = mes sin hoja)</span>", unsafe_allow_html=True)
+        ui.show(fig)
+    else:
         fig = go.Figure()
         for anio, color in zip(previos_m, _rampa(len(previos_m))):
             fila = tabla.loc[anio].dropna()
@@ -68,38 +98,74 @@ else:
                             name=f"Promedio {previos_m[0]}–{previos_m[-1]}", mode="lines",
                             line=dict(color="#6D6E71", width=2, dash="dot"),
                             hovertemplate="Promedio años anteriores · %{x}: %{y:,.1f} qq<extra></extra>")
-        if _anio_act in anios_m:
-            fila = tabla.loc[_anio_act].dropna()
-            fig.add_scatter(x=[D.MESES[m - 1] for m in fila.index], y=fila.values, name=f"{_anio_act} (actual)",
+        if anio_act in anios_m:
+            fila = tabla.loc[anio_act].dropna()
+            fig.add_scatter(x=[D.MESES[m - 1] for m in fila.index], y=fila.values, name=f"{anio_act} (actual)",
                             mode="lines+markers+text", line=dict(color="#267939", width=3.5),
                             marker=dict(size=9, color="#267939", line=dict(color="#FFFFFF", width=1.5)),
                             text=[ui.fnum(v) for v in fila.values], textposition="top center",
-                            hovertemplate=f"{_anio_act} · %{{x}}: %{{y:,.1f}} qq<extra></extra>")
-        fig.update_layout(legend_itemclick="toggle", legend_itemdoubleclick="toggleothers", hovermode="x unified")
+                            hovertemplate=f"{anio_act} · %{{x}}: %{{y:,.1f}} qq<extra></extra>")
+        fig.add_annotation(x=D.MESES[int(m_max) - 1], y=v_max, text=f"<b>Máximo: {D.MESES[int(m_max) - 1]} {a_max}</b>",
+                           showarrow=True, arrowhead=2, arrowcolor="#D35E13", ax=0, ay=-34,
+                           font=dict(color="#D35E13"), bgcolor="rgba(255,255,255,0.9)")
+        fig.update_layout(legend_itemclick="toggle", legend_itemdoubleclick="toggleothers")
         ui.style(fig, height=430)
         fig.update_xaxes(type="category", categoryorder="array", categoryarray=D.MESES)
         fig.update_layout(hovermode="x unified")
-        ui.headroom(fig, float(tabla.max().max() or 1), 1.15)
-        st.markdown(f"**Stock al cierre de cada mes, por año (qq) · {cat_sel}**")
+        ui.headroom(fig, v_max, 1.22)
+        st.markdown(f"**Quintales de {lbl} por mes, una línea por año · {cat_sel}**")
         ui.show(fig)
+    st.caption(f"Año actual **{anio_act}** (el año elegido en la barra lateral). "
+               + ("En las líneas, haz clic en la leyenda para ocultar o mostrar un año; doble clic deja solo ese."
+                  if ver == "Líneas" else "Pasa el cursor sobre una celda para ver el valor exacto."))
 
-        t = tabla.copy()
-        t.columns = [D.MESES[m - 1] for m in t.columns]
-        t["Promedio"] = tabla.mean(axis=1)
-        t.index = [str(a) for a in anios_m]
-        t.index.name = "Año"
-        if _anio_act in anios_m and (_anio_act - 1) in anios_m:
-            ant = tabla.loc[_anio_act - 1]
-            act = tabla.loc[_anio_act]
-            var = ((act - ant) / ant.where(ant != 0) * 100)
-            var.index = [D.MESES[m - 1] for m in var.index]
-            var["Promedio"] = (t.loc[str(_anio_act), "Promedio"] / t.loc[str(_anio_act - 1), "Promedio"] - 1) * 100 \
-                if t.loc[str(_anio_act - 1), "Promedio"] else None
-            t.loc[f"Var. % vs {_anio_act - 1}"] = var
-        st.markdown("**Tabla: stock al cierre de cada mes (qq)**")
+    t = tabla.copy()
+    t.columns = D.MESES
+    if not es_stock:
+        t["Total"] = tabla.sum(axis=1, min_count=1)
+    t["Promedio"] = tabla.mean(axis=1)
+    t.index = [str(a) for a in anios_m]
+    t.index.name = "Año"
+    if anio_act in anios_m and (anio_act - 1) in anios_m:
+        ant, act = t.loc[str(anio_act - 1)], t.loc[str(anio_act)]
+        t.loc[f"Var. % vs {anio_act - 1}"] = (act - ant) / ant.where(ant != 0) * 100
+    with st.expander(f"Ver tabla: {lbl} por mes (qq)", expanded=es_stock):
         ui.show_pivot(t)
         st.caption("La última fila es la variación porcentual del año actual frente al anterior en cada mes "
-                   "(vacía si el año anterior tenía 0 qq en ese mes).")
+                   "(vacía si el año anterior tenía 0 qq en ese mes)."
+                   + ("" if es_stock else " El total del año actual solo incluye los meses con hoja."))
+
+
+f1, f2 = st.columns([1, 2])
+NOMBRE = f1.radio("Analizar", ["Disolución", "Ingreso", "Stock fin de mes"], horizontal=True, key="hist_medida",
+                  help="Disolución: estibas disueltas o mezcladas. Ingreso: quintales cuya fecha de ingreso cae "
+                       "en el mes de la hoja. Stock fin de mes: estado «Cuantificado» al cierre de cada mes.")
+ES_STOCK = NOMBRE == "Stock fin de mes"
+_AYUDA_VISTA = ("Total por año: suma de cada año y variación del año actual frente a los anteriores. "
+                "Mes a mes: cada mes de cada año, para ver en qué mes de qué año hubo más.")
+if NOMBRE == "Disolución":
+    estados_all = sorted(c["traz"]["estado"].unique())
+    estados = f2.multiselect("Estados que cuentan como disolución", estados_all,
+                             default=[e for e in D.ESTADOS_DISOLUCION if e in estados_all], key="hist_estados")
+    fuente = D.disolucion(c["traz_dim"], estados or None)
+    VISTA = f2.radio("Comparar", ["Total por año", "Mes a mes"], horizontal=True, key="hist_vista_dis",
+                     help=_AYUDA_VISTA)
+elif NOMBRE == "Ingreso":
+    fuente = D.ingreso(c["traz_dim"])
+    VISTA = f2.radio("Comparar", ["Total por año", "Mes a mes"], horizontal=True, key="hist_vista_ing",
+                     help=_AYUDA_VISTA)
+else:
+    fuente = D.stock(c["traz_dim"])
+    # el stock es una foto de cada cierre: no se suma por año
+    MEDIDA_STOCK = f2.radio("Comparar", ["Mes a mes", "Promedio mensual del año", "Cierre del último mes comparable"],
+                            horizontal=True, key="hist_stock_medida",
+                            help="Mes a mes: stock al cierre de cada mes, una línea por año. "
+                                 "Promedio: promedio del stock de cierre de los meses del periodo de cada año. "
+                                 "Cierre: stock al cierre del mismo mes (el último mes con datos del año actual).")
+    VISTA = "Mes a mes" if MEDIDA_STOCK == "Mes a mes" else "Total por año"
+MES_A_MES = VISTA == "Mes a mes" and not fuente.empty
+if MES_A_MES:
+    _mes_a_mes(fuente, NOMBRE, ES_STOCK)
 if fuente.empty:
     ui.no_data(); st.stop()
 
