@@ -3,7 +3,8 @@
   No requiere permisos de administrador: la tarea corre con tu usuario mientras tengas sesión iniciada.
 
   Cuándo corre:
-    · cada 2 horas entre las 7:00 a. m. y las 7:00 p. m. (y siempre a las 6:00 p. m.);
+    · todos los días a la 1:30 p. m. (hora límite en que el equipo está encendido);
+    · cada 2 horas desde las 7:00 a. m. (7, 9, 11 y 1 p. m.);
     · cada vez que inicias sesión en Windows;
     · si el equipo estaba apagado o suspendido a la hora programada, apenas vuelva a estar disponible.
   Solo publica si los Excel cambiaron (si no, termina en unos segundos sin hacer nada).
@@ -13,7 +14,7 @@
     powershell -ExecutionPolicy Bypass -File programar_actualizacion.ps1 -CadaHoras 1    (cada hora)
     powershell -ExecutionPolicy Bypass -File programar_actualizacion.ps1 -Quitar         (eliminar la tarea)
 #>
-param([string]$Hora = "18:00", [int]$CadaHoras = 2, [string]$Desde = "07:00", [int]$DuranteHoras = 12,
+param([string]$Hora = "13:30", [int]$CadaHoras = 2, [string]$Desde = "07:00", [int]$DuranteHoras = 6,
       [switch]$Quitar)
 
 $Nombre = "Reproceso - actualizar app web"

@@ -32,14 +32,15 @@ quién autoriza); la versión local sí los muestra.
 Una tarea programada de Windows («Reproceso - actualizar app web») ejecuta
 `actualizar_datos.py --auto` con tu usuario (sin ventana):
 
-- **cada 2 horas entre las 7:00 a. m. y las 7:00 p. m.** y siempre a las **6:00 p. m.**;
+- todos los días a la **1:30 p. m.** (hora hasta la que el equipo está encendido);
+- **cada 2 horas desde las 7:00 a. m.** (7:00, 9:00, 11:00 y 1:00 p. m.);
 - **cada vez que inicias sesión** en Windows (un minuto después, para que OneDrive y la red estén listos);
 - si el equipo estaba apagado o **suspendido** a la hora programada, apenas vuelva a estar disponible.
 
 Solo publica si los Excel cambiaron (si no, termina en segundos). Si algún libro no se puede leer, no
 publica nada. El resultado de cada ejecución, con la hora de cada paso, queda en `logs/actualizacion_auto.log`.
 
-- Cambiar la hora: `powershell -ExecutionPolicy Bypass -File programar_actualizacion.ps1 -Hora 07:30`
+- Cambiar la hora: `powershell -ExecutionPolicy Bypass -File programar_actualizacion.ps1 -Hora 12:30`
 - Quitar la tarea: `powershell -ExecutionPolicy Bypass -File programar_actualizacion.ps1 -Quitar`
 - Ejecutarla ya: Programador de tareas → «Reproceso - actualizar app web» → Ejecutar.
 
