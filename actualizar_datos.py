@@ -48,11 +48,19 @@ def _git() -> str | None:
     return next((c for c in cand if c and os.path.exists(c)), None)
 
 
+def _paso(texto: str):
+    """En modo automático deja la hora de cada paso: si Windows corta la tarea se sabe dónde quedó."""
+    if AUTO:
+        print(f"  [{dt.datetime.now():%H:%M:%S}] {texto}")
+
+
 def main() -> int:
+    _paso("importando módulos")
     from reproceso import data as D
 
     print(f"Leyendo Excel en: {DATA_DIR}")
     datos = D.load_all(DATA_DIR)
+    _paso("libros de stock leídos; leyendo vínculos e inventario")
     if datos["traz"].empty:
         print("ERROR: no se leyeron registros. ¿Están los archivos .xlsm en la carpeta?")
         return 1
@@ -67,6 +75,7 @@ def main() -> int:
     if not datos["inv"].empty:
         print(f"Inventario físico: {datos['inv']['fecha'].nunique()} pestañas, "
               f"última {datos['inv']['fecha'].max():%Y-%m-%d}")
+    _paso("generando instantánea")
     meta = D.export_snapshot(datos, DATA_DIR, SNAP_DIR, solo_si_cambia=True)
     if meta is None:
         print("Sin cambios en los Excel desde la última instantánea.")
@@ -84,9 +93,17 @@ def main() -> int:
         print("\n(git no está configurado: la instantánea quedó solo en este equipo)")
         return 0
 
+    # git nunca debe quedarse esperando una respuesta (credenciales, etc.): falla rápido y queda en el registro
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="Never")
+
     def run(*a, mostrar=True):
-        r = subprocess.run([git, *a], cwd=APP_DIR, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", creationflags=NO_WINDOW)
+        _paso(f"git {a[0]}")
+        try:
+            r = subprocess.run([git, *a], cwd=APP_DIR, capture_output=True, text=True, env=env, timeout=180,
+                               encoding="utf-8", errors="replace", creationflags=NO_WINDOW)
+        except subprocess.TimeoutExpired:
+            print(f"ERROR: «git {a[0]}» no respondió en 3 minutos (¿sin conexión o pidiendo credenciales?).")
+            return 1, ""
         out = (r.stdout + r.stderr).strip()
         if out and mostrar:
             print(out)
